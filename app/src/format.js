@@ -32,7 +32,7 @@ export function callInfo(c) {
     // Calls placed before health/life were added only had vehicle fields
     insuranceType: d.insurance_type || (d.vehicle_type ? 'Motor' : null),
     details: d.customer_details || null,
-    context: d.customer_context && d.customer_context !== 'none' ? d.customer_context : null,
+    goal: [d.call_goal, d.customer_context].find((g) => g && g !== 'none') || null,
     vehicleType: d.vehicle_type,
     vehicleModel: d.vehicle_model && d.vehicle_model !== 'not specified' ? d.vehicle_model : null,
     insuranceStatus: d.insurance_status,

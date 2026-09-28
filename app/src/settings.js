@@ -182,7 +182,7 @@ const INSURANCE_WORDS = {
 }
 
 // Builds the Bolna user_data payload shared by the single-call and bulk-call flows.
-export function buildUserData(settings, { insuranceType, insuranceStatus, language, name, members, age, cover, vehicleType, vehicleModel, context }) {
+export function buildUserData(settings, { insuranceType, insuranceStatus, language, name, members, age, cover, vehicleType, vehicleModel, goal }) {
   const trimmedName = name?.trim()
   return {
     customer_name: trimmedName || 'not specified',
@@ -194,7 +194,7 @@ export function buildUserData(settings, { insuranceType, insuranceStatus, langua
     insurance_status: insuranceStatus,
     insurance_status_label: SCRIPT_TYPES.find((s) => s.id === insuranceStatus).label,
     customer_details: buildCustomerDetails({ insuranceType, members, age, cover, vehicleType, vehicleModel }),
-    customer_context: context?.trim() || 'none',
+    call_goal: goal?.trim() || 'none',
     ...(insuranceType === 'motor' && { vehicle_type: vehicleType, vehicle_model: vehicleModel?.trim() || 'not specified' }),
     greeting: buildGreeting(settings, { language, name: trimmedName, insuranceType, vehicleType }),
     script: settings.scripts[insuranceType][insuranceStatus],

@@ -50,7 +50,7 @@ export default function VoiceTextarea({ value, onChange, lang, placeholder, disa
     if (native) {
       try {
         const perm = await NativeSpeech.requestPermissions()
-        if (perm.speechRecognition !== 'granted') return setError('Microphone permission denied.')
+        if (perm.speechRecognition !== 'granted') return setError('Microphone access is off. Allow it for ArhamAvaz in your phone’s Settings → Apps → Permissions.')
         await NativeSpeech.removeAllListeners()
         await NativeSpeech.addListener('partialResults', (d) => emit(d.matches?.[0] || ''))
         await NativeSpeech.addListener('listeningState', (d) => d.status === 'stopped' && setListening(false))
@@ -62,13 +62,24 @@ export default function VoiceTextarea({ value, onChange, lang, placeholder, disa
       }
       return
     }
+    // Ask for the mic explicitly first: SpeechRecognition alone often fails with "not-allowed" without ever prompting.
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream.getTracks().forEach((t) => t.stop())
+    } catch (e) {
+      return setError(e?.name === 'NotFoundError'
+        ? 'No microphone found on this device.'
+        : 'Microphone is blocked. Click the icon at the left of the address bar, set Microphone to Allow, then tap the mic again.')
+    }
     const rec = new WebSpeech()
     rec.lang = lang
     rec.continuous = true
     rec.interimResults = true
     rec.onresult = (e) => emit(Array.from(e.results, (r) => r[0].transcript.trim()).join(' '))
     rec.onerror = (e) => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') setError('Microphone permission denied.')
+      if (e.error === 'not-allowed') setError('Microphone is blocked. Click the icon at the left of the address bar, set Microphone to Allow, then try again.')
+      else if (e.error === 'service-not-allowed' || e.error === 'language-not-supported') setError('This browser’s voice service doesn’t support this language. Try Google Chrome, or type the goal.')
+      else if (e.error === 'network') setError('Voice input needs an internet connection.')
       else if (e.error !== 'aborted' && e.error !== 'no-speech') setError('Voice input error. Please try again.')
     }
     rec.onend = () => { setListening(false); recRef.current = null }

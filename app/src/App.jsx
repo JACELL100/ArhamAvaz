@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { HomeIcon, ListIcon, PhoneIcon, SettingsIcon, UploadIcon } from './components/icons'
-import BulkCallPage from './pages/BulkCallPage'
+import { HomeIcon, ListIcon, PhoneIcon, SettingsIcon } from './components/icons'
 import CallPage from './pages/CallPage'
 import Home from './pages/Home'
 import Responses from './pages/Responses'
@@ -11,7 +10,6 @@ import useCalls from './useCalls'
 const TABS = [
   { id: 'home', label: 'Home', Icon: HomeIcon },
   { id: 'call', label: 'Call', Icon: PhoneIcon },
-  { id: 'bulk', label: 'Bulk', Icon: UploadIcon },
   { id: 'responses', label: 'Responses', Icon: ListIcon },
   { id: 'settings', label: 'Settings', Icon: SettingsIcon },
 ]
@@ -89,7 +87,6 @@ export default function App() {
       <main className="content" key={tab}>
         {tab === 'home' && <Home calls={calls} loading={loading} onNewCall={() => go('call')} onOpenCall={openCall} />}
         {tab === 'call' && <CallPage settings={settings} onCallPlaced={refresh} onViewResponses={() => go('responses')} />}
-        {tab === 'bulk' && <BulkCallPage settings={settings} onCallPlaced={refresh} />}
         {tab === 'responses' && (
           <Responses calls={calls} loading={loading} error={error} refresh={refresh} selectedId={selectedId} onSelect={setSelectedId} />
         )}

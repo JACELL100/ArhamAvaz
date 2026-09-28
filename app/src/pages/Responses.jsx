@@ -53,10 +53,10 @@ function Detail({ call, onBack }) {
 
       {info.recordingUrl && <audio controls src={info.recordingUrl} />}
 
-      {info.context && (
+      {info.goal && (
         <section>
-          <h4>Query context</h4>
-          <p className="summary">{info.context}</p>
+          <h4>Call goal</h4>
+          <p className="summary">🎯 {info.goal}</p>
         </section>
       )}
 

@@ -4,12 +4,12 @@ const API_KEY = import.meta.env.VITE_BOLNA_API_KEY
 const FROM_NUMBER = import.meta.env.VITE_BOLNA_FROM_NUMBER
 const BASE = Capacitor.isNativePlatform() ? 'https://api.bolna.ai' : '/bolna'
 
-// Hindi/English/Hinglish share one agent (ElevenLabs voice + Deepgram). Every regional language has its own
+// Hindi/Hinglish share one agent and English has a twin (ElevenLabs voice + Deepgram). Every regional language has its own
 // Sarvam-based agent, since the speech-to-text and voice language is fixed per agent.
 const MAIN_AGENT = import.meta.env.VITE_BOLNA_AGENT_ID
 const AGENTS = {
   hi: MAIN_AGENT,
-  en: MAIN_AGENT,
+  en: '59d31f62-453d-4dfb-bdfc-efe7b4fd50fa', // same as main, but speech recognition set to English
   hinglish: MAIN_AGENT,
   gu: import.meta.env.VITE_BOLNA_AGENT_ID_GU || '7697ce86-aba1-4ce9-85de-b082599dde49',
   mr: 'e2e08606-ef27-45f1-b8a9-93d58020fd0d',

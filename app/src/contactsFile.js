@@ -5,6 +5,7 @@ import { isValidPhone, toE164 } from './format'
 const NAME_HEADER = /^(customer\s*)?name$|^(full|lead|contact)\s*name$/i
 const PHONE_HEADER = /^(phone|mobile|contact|whatsapp)(\s*(no|number))?$|^number$/i
 const LANGUAGE_HEADER = /^lang(uage)?$/i
+const NOTES_HEADER = /^(notes?|goal|call\s*goal|context|query|remarks?|comments?|details?)$/i
 const PHONE_IN_TEXT = /(\+?\d[\d\s-]{8,14}\d)/
 
 function matchLanguage(raw) {
@@ -23,6 +24,7 @@ function mapColumns(header) {
     if (PHONE_HEADER.test(h)) map.phone ??= i
     else if (NAME_HEADER.test(h)) map.name ??= i
     else if (LANGUAGE_HEADER.test(h)) map.language ??= i
+    else if (NOTES_HEADER.test(h)) map.notes ??= i
   })
   return map
 }
@@ -64,6 +66,7 @@ function rowsToContacts(rows) {
       phone,
       rawPhone: String(rawPhone).trim(),
       language: map.language !== undefined ? matchLanguage(row[map.language]) : undefined,
+      notes: map.notes !== undefined ? String(row[map.notes] || '').trim() : '',
       valid: isValidPhone(phone),
     })
   }
@@ -88,6 +91,7 @@ function linesToContacts(text) {
       phone,
       rawPhone,
       language: undefined,
+      notes: '',
       valid: isValidPhone(phone),
     })
   }
@@ -96,6 +100,27 @@ function linesToContacts(text) {
 
 function ext(name) {
   return name.slice(name.lastIndexOf('.') + 1).toLowerCase()
+}
+
+const TEMPLATE_ROWS = [
+  ['Name', 'Phone', 'Language', 'Goal'],
+  ['Ramesh Patel', '9876543210', 'Gujarati', 'Policy expires next month, get him to renew'],
+  ['Priya Sharma', '+91 98123 45678', 'Hindi', ''],
+  ['John D’Souza', '9820012345', '', 'Wants to add his parents to the family floater'],
+]
+
+// Headers match what parseContactsFile detects; Language/Goal may be left blank to use the page defaults.
+export function downloadTemplate(bookType) {
+  const sheet = XLSX.utils.aoa_to_sheet(TEMPLATE_ROWS)
+  sheet['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 50 }]
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Contacts')
+  if (bookType === 'xlsx') {
+    const langs = XLSX.utils.aoa_to_sheet([['Accepted language values'], ...LANGUAGES.map((l) => [l.name])])
+    langs['!cols'] = [{ wch: 26 }]
+    XLSX.utils.book_append_sheet(workbook, langs, 'Languages')
+  }
+  XLSX.writeFile(workbook, `contacts-template.${bookType}`, { bookType })
 }
 
 export async function parseContactsFile(file) {
