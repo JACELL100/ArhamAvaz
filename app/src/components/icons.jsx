@@ -18,3 +18,9 @@ export const RefreshIcon = () => (
 export const BackIcon = () => (
   <svg {...base}><path d="M15 18l-6-6 6-6" /></svg>
 )
+export const UploadIcon = () => (
+  <svg {...base}><path d="M12 16V4M12 4l-4.5 4.5M12 4l4.5 4.5" /><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" /></svg>
+)
+export const XIcon = () => (
+  <svg {...base} width={16} height={16}><path d="M6 6l12 12M18 6L6 18" /></svg>
+)

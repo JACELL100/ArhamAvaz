@@ -72,10 +72,9 @@ export default function Home({ calls, loading, onNewCall, onOpenCall }) {
         </div>
 
         <div className="side-panels">
-          <Breakdown title="Call purpose" rows={[{ label: 'Sales', value: count('callType', 'sales') }, { label: 'Renewal', value: count('callType', 'renewal') }]} />
-          <Breakdown title="Language" rows={Object.keys(LANGUAGE_LABELS).map((l) => ({ label: LANGUAGE_LABELS[l], value: count('language', l) }))} />
-          <Breakdown title="Vehicle" rows={[{ label: 'Car', value: count('vehicleType', 'car') }, { label: 'Bike', value: count('vehicleType', 'bike') }]} />
-        </div>
+          <Breakdown title="Insurance type" rows={['Health', 'Life', 'Motor'].map((t) => ({ label: t, value: count('insuranceType', t) }))} />
+          <Breakdown title="Current policy" rows={['New policy', 'Renewal', 'Rollover / Port'].map((s) => ({ label: s, value: count('statusLabel', s) }))} />
+          <Breakdown title="Language" rows={Object.keys(LANGUAGE_LABELS).map((l) => ({ label: LANGUAGE_LABELS[l], value: count('language', l) })).filter((r, i) => r.value || i < 3)} />        </div>
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import { callInfo, formatDuration, formatPhone, formatWhen, LANGUAGE_LABELS, statusTone } from '../format'
+import { callInfo, formatDuration, formatPhone, formatWhen, LANGUAGE_LABELS, statusTone, TYPE_ICONS } from '../format'
 
 export function StatusPill({ status }) {
   return <span className={`pill tone-${statusTone(status)}`}>{status.replace(/-/g, ' ')}</span>
@@ -9,11 +9,11 @@ export default function CallRow({ call, active, onClick }) {
   const title = info.name || formatPhone(info.phone)
   return (
     <button type="button" className={`call-row ${active ? 'active' : ''}`} onClick={onClick}>
-      <span className="avatar">{info.name ? info.name[0].toUpperCase() : info.vehicleType === 'bike' ? '🏍️' : '🚗'}</span>
+      <span className="avatar">{info.name ? info.name[0].toUpperCase() : TYPE_ICONS[info.insuranceType] || '📞'}</span>
       <span className="call-main">
         <b>{title}</b>
         <small>
-          {[info.name && formatPhone(info.phone), info.callType && (info.callType === 'renewal' ? 'Renewal' : 'Sales'), LANGUAGE_LABELS[info.language]]
+          {[info.name && formatPhone(info.phone), info.insuranceType, info.statusLabel, LANGUAGE_LABELS[info.language]]
             .filter(Boolean)
             .join(' · ')}
         </small>

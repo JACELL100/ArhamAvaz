@@ -1,4 +1,7 @@
-export const LANGUAGE_LABELS = { Hindi: 'हिन्दी', Gujarati: 'ગુજરાતી', English: 'English', Hinglish: 'Hinglish' }
+export const LANGUAGE_LABELS = {
+  Hindi: 'हिन्दी', Gujarati: 'ગુજરાતી', English: 'English', Hinglish: 'Hinglish', Marathi: 'मराठी', Tamil: 'தமிழ்',
+  Telugu: 'తెలుగు', Kannada: 'ಕನ್ನಡ', Malayalam: 'മലയാളം', Bengali: 'বাংলা', Punjabi: 'ਪੰਜਾਬੀ', Odia: 'ଓଡ଼ିଆ',
+}
 
 const LIVE = ['queued', 'initiated', 'ringing', 'in-progress', 'call-disconnected', 'prepared']
 const MISSED = ['busy', 'no-answer', 'canceled', 'failed', 'error', 'stopped', 'balance-low']
@@ -14,6 +17,9 @@ export function statusTone(status) {
 export const isMissed = (c) => MISSED.includes(c.status)
 export const isAnswered = (c) => c.status === 'completed' && c.conversation_duration > 0
 
+const STATUS_LABELS = { new: 'New policy', renewal: 'Renewal', port: 'Rollover / Port', switching: 'Rollover / Port' }
+export const TYPE_ICONS = { Health: '🩺', Life: '🛡️', Motor: '🚗' }
+
 // Form answers sent as user_data come back under context_details.recipient_data
 export function callInfo(c) {
   const d = c.context_details?.recipient_data || {}
@@ -23,9 +29,14 @@ export function callInfo(c) {
     phone: c.user_number || c.telephony_data?.to_number || c.context_details?.recipient_phone_number,
     callType: d.call_type,
     language: d.language,
+    // Calls placed before health/life were added only had vehicle fields
+    insuranceType: d.insurance_type || (d.vehicle_type ? 'Motor' : null),
+    details: d.customer_details || null,
+    context: d.customer_context && d.customer_context !== 'none' ? d.customer_context : null,
     vehicleType: d.vehicle_type,
     vehicleModel: d.vehicle_model && d.vehicle_model !== 'not specified' ? d.vehicle_model : null,
     insuranceStatus: d.insurance_status,
+    statusLabel: STATUS_LABELS[d.insurance_status] || null,
     recordingUrl: c.telephony_data?.recording_url,
     hangupReason: c.telephony_data?.hangup_reason,
   }
@@ -45,6 +56,18 @@ export function formatWhen(iso) {
   return sameDay
     ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     : d.toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+}
+
+// Accepts "98765 43210", "+91 98765-43210", etc. and returns E.164; a bare 10-digit number is treated as Indian.
+export function toE164(input) {
+  const digits = String(input || '').replace(/[^\d+]/g, '')
+  if (digits.startsWith('+')) return digits
+  if (digits.length === 10) return `+91${digits}`
+  return `+${digits}`
+}
+
+export function isValidPhone(p) {
+  return /^\+\d{10,15}$/.test(p)
 }
 
 export function formatPhone(p) {

@@ -1,13 +1,14 @@
 import '../settings.css'
 import { useEffect, useState } from 'react'
-import { buildGreeting, DEFAULT_SETTINGS, LANGUAGES, SCRIPT_TYPES } from '../settings'
+import { buildGreeting, DEFAULT_SETTINGS, INSURANCE_TYPES, LANGUAGES, SCRIPT_TYPES } from '../settings'
 import PageHeader from '../components/PageHeader'
 
-const PLACEHOLDERS = ['{name}', '{agent}', '{company}', '{vehicle}']
+const PLACEHOLDERS = ['{name}', '{agent}', '{company}', '{insurance}']
 
 export default function SettingsPage({ settings, onSave }) {
   const [draft, setDraft] = useState(settings)
   const [language, setLanguage] = useState('hi')
+  const [insuranceType, setInsuranceType] = useState('health')
   const [scriptId, setScriptId] = useState('new')
   const [saved, setSaved] = useState(false)
 
@@ -21,9 +22,17 @@ export default function SettingsPage({ settings, onSave }) {
   const isDefault = JSON.stringify(draft) === JSON.stringify(DEFAULT_SETTINGS)
   const scriptIndex = SCRIPT_TYPES.findIndex((s) => s.id === scriptId)
   const scriptLabel = SCRIPT_TYPES[scriptIndex].label
+  const insuranceLabel = INSURANCE_TYPES.find((t) => t.id === insuranceType).label
 
   const set = (key, value) => { setDraft((d) => ({ ...d, [key]: value })); setSaved(false) }
-  const setIn = (group, key, value) => set(group, { ...draft[group], [key]: value })
+  const setGreeting = (lang, value) => {
+    setDraft((d) => ({ ...d, greetings: { ...d.greetings, [lang]: value } }))
+    setSaved(false)
+  }
+  const setScript = (type, id, value) => {
+    setDraft((d) => ({ ...d, scripts: { ...d.scripts, [type]: { ...d.scripts[type], [id]: value } } }))
+    setSaved(false)
+  }
 
   function handleSave() {
     onSave(draft)
@@ -64,20 +73,34 @@ export default function SettingsPage({ settings, onSave }) {
         </div>
         <label className="field">
           <span>{LANGUAGES.find((l) => l.id === language).name} greeting</span>
-          <textarea rows={3} value={draft.greetings[language]} onChange={(e) => setIn('greetings', language, e.target.value)} />
+          <textarea rows={3} value={draft.greetings[language]} onChange={(e) => setGreeting(language, e.target.value)} />
         </label>
         <p className="settings-hint">
           Placeholders: {PLACEHOLDERS.map((p) => <code key={p}>{p}</code>)}
         </p>
         <div className="preview">
           <small>Preview</small>
-          <p className="preview-bubble">{buildGreeting(draft, { language, name: 'Rahul', vehicleType: 'car' })}</p>
+          <p className="preview-bubble">{buildGreeting(draft, { language, name: 'Rahul', insuranceType: 'health' })}</p>
         </div>
       </section>
 
       <section className="card">
         <h3 className="settings-title">Conversation scripts</h3>
-        <div className="segmented" style={{ '--count': SCRIPT_TYPES.length, '--index': scriptIndex }}>
+        <div className="chips insurance-chips" role="group" aria-label="Insurance type">
+          {INSURANCE_TYPES.map((t) => (
+            <button
+              type="button"
+              key={t.id}
+              className={`chip ${insuranceType === t.id ? 'active' : ''}`}
+              aria-pressed={insuranceType === t.id}
+              onClick={() => setInsuranceType(t.id)}
+            >
+              <span className="chip-icon" aria-hidden="true">{t.icon}</span>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="segmented script-segmented" style={{ '--count': SCRIPT_TYPES.length, '--index': scriptIndex }}>
           <span className="segmented-thumb" />
           {SCRIPT_TYPES.map((s) => (
             <button type="button" key={s.id} className={s.id === scriptId ? 'active' : ''} onClick={() => setScriptId(s.id)}>
@@ -85,8 +108,13 @@ export default function SettingsPage({ settings, onSave }) {
             </button>
           ))}
         </div>
-        <p className="settings-hint">Used when Current insurance is set to “{scriptLabel}”.</p>
-        <textarea className="tall" value={draft.scripts[scriptId]} onChange={(e) => setIn('scripts', scriptId, e.target.value)} aria-label={`${scriptLabel} script`} />
+        <p className="settings-hint">Used for {insuranceLabel} calls when Current policy is set to “{scriptLabel}”.</p>
+        <textarea
+          className="tall"
+          value={draft.scripts[insuranceType][scriptId]}
+          onChange={(e) => setScript(insuranceType, scriptId, e.target.value)}
+          aria-label={`${insuranceLabel} ${scriptLabel} script`}
+        />
       </section>
 
       <section className="card">

@@ -11,8 +11,6 @@ const FILTERS = [
   { id: 'scheduled', label: 'Scheduled', test: (c) => c.status === 'scheduled' },
 ]
 
-const INSURANCE = { new: 'New policy', renewal: 'Renewal', switching: 'Switching insurer' }
-
 // Flatten nested extracted data into [label, value] leaves so it reads as facts, not raw JSON.
 function flattenData(value, path = []) {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -27,10 +25,10 @@ function Detail({ call, onBack }) {
   const turns = parseTranscript(call.transcript)
   const facts = [
     ['Phone', formatPhone(info.phone)],
-    ['Purpose', info.callType === 'renewal' ? 'Renewal' : info.callType === 'sales' ? 'Sales' : '—'],
+    ['Insurance', info.insuranceType || '—'],
+    ['Policy', info.statusLabel || '—'],
     ['Language', LANGUAGE_LABELS[info.language] || '—'],
-    ['Vehicle', [info.vehicleType === 'bike' ? 'Bike' : info.vehicleType === 'car' ? 'Car' : null, info.vehicleModel].filter(Boolean).join(' · ') || '—'],
-    ['Insurance', INSURANCE[info.insuranceStatus] || '—'],
+    ['Details', info.details || [info.vehicleType === 'bike' ? 'Bike' : info.vehicleType === 'car' ? 'Car' : null, info.vehicleModel].filter(Boolean).join(' · ') || '—'],
     ['Duration', formatDuration(call.conversation_duration)],
     ['Called at', formatWhen(call.created_at)],
     ['Cost', call.total_cost ? `$${(call.total_cost / 100).toFixed(2)}` : '—'],
@@ -54,6 +52,13 @@ function Detail({ call, onBack }) {
       </div>
 
       {info.recordingUrl && <audio controls src={info.recordingUrl} />}
+
+      {info.context && (
+        <section>
+          <h4>Query context</h4>
+          <p className="summary">{info.context}</p>
+        </section>
+      )}
 
       {call.summary && (
         <section>
@@ -98,7 +103,7 @@ export default function Responses({ calls, loading, error, refresh, selectedId, 
     .filter((c) => {
       if (!q) return true
       const i = callInfo(c)
-      return [i.name, i.phone, i.vehicleModel, c.summary].some((v) => v?.toLowerCase().includes(q))
+      return [i.name, i.phone, i.insuranceType, i.details, i.vehicleModel, c.summary].some((v) => v?.toLowerCase().includes(q))
     })
   const selected = calls.find((c) => c.id === selectedId)
 
@@ -110,7 +115,7 @@ export default function Responses({ calls, loading, error, refresh, selectedId, 
           subtitle="Every call, its outcome and the conversation"
           action={<button className="icon-btn" onClick={refresh} aria-label="Refresh"><RefreshIcon /></button>}
         />
-        <input className="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, phone, vehicle…" />
+        <input className="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, phone, insurance…" />
         <div className="chips filter-chips">
           {FILTERS.map((f) => (
             <button key={f.id} type="button" className={`chip ${filter === f.id ? 'active' : ''}`} onClick={() => setFilter(f.id)}>
