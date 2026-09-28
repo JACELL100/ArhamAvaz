@@ -1,0 +1,8 @@
+{
+  "appId": "com.voiceagent.carinsurance",
+  "appName": "ArhamAvaz",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}
