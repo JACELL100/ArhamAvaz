@@ -9,6 +9,9 @@ export const PhoneIcon = () => (
 export const ListIcon = () => (
   <svg {...base}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /><path d="M8 9h8M8 13h5" /></svg>
 )
+export const SettingsIcon = () => (
+  <svg {...base}><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></svg>
+)
 export const RefreshIcon = () => (
   <svg {...base} width={18} height={18}><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
 )

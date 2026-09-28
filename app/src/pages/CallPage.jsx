@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getExecution, startCall } from '../bolna'
-import { buildGreeting, COMPANY, LANGUAGES } from '../greetings'
+import { buildGreeting, LANGUAGES, SCRIPT_TYPES } from '../settings'
 import PageHeader from '../components/PageHeader'
 
 const FINAL_STATUSES = ['completed', 'call-disconnected', 'failed', 'no-answer', 'busy', 'canceled', 'stopped', 'error', 'scheduled']
@@ -12,11 +12,6 @@ const CALL_TYPES = [
 const VEHICLES = [
   { id: 'car', label: 'Car', icon: '🚗' },
   { id: 'bike', label: 'Bike', icon: '🏍️' },
-]
-const STATUSES = [
-  { id: 'new', label: 'New policy' },
-  { id: 'renewal', label: 'Renewal' },
-  { id: 'switching', label: 'Switching insurer' },
 ]
 const WHEN = [
   { id: 'now', label: 'Call now' },
@@ -65,7 +60,7 @@ function Chips({ options, value, onChange, disabled }) {
   )
 }
 
-export default function CallPage({ onCallPlaced, onViewResponses }) {
+export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
   const [callType, setCallType] = useState('sales')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -100,12 +95,16 @@ export default function CallPage({ onCallPlaced, onViewResponses }) {
     }
     poll()
     return () => { stopped = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [executionId])
 
   function chooseCallType(type) {
     setCallType(type)
     setInsuranceStatus(type === 'renewal' ? 'renewal' : 'new')
+  }
+
+  function chooseInsuranceStatus(status) {
+    setInsuranceStatus(status)
+    setCallType(status === 'renewal' ? 'renewal' : 'sales')
   }
 
   async function handleSubmit(e) {
@@ -128,13 +127,17 @@ export default function CallPage({ onCallPlaced, onViewResponses }) {
     const trimmedName = name.trim()
     const userData = {
       customer_name: trimmedName || 'not specified',
-      company_name: COMPANY,
+      agent_name: settings.agentName,
+      company_name: settings.companyName,
       call_type: callType,
       language: LANGUAGES.find((l) => l.id === language).name,
       insurance_status: insuranceStatus,
+      insurance_status_label: SCRIPT_TYPES.find((s) => s.id === insuranceStatus).label,
       vehicle_type: vehicleType,
       vehicle_model: vehicleModel.trim() || 'not specified',
-      greeting: buildGreeting({ language, callType, name: trimmedName, vehicleType }),
+      greeting: buildGreeting(settings, { language, name: trimmedName, vehicleType }),
+      script: settings.scripts[insuranceStatus],
+      guidelines: settings.guidelines,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     }
 
@@ -201,7 +204,10 @@ export default function CallPage({ onCallPlaced, onViewResponses }) {
 
         <div className="field">
           <span>Current insurance</span>
-          <Chips options={STATUSES} value={insuranceStatus} onChange={setInsuranceStatus} disabled={busy} />
+          <Chips options={SCRIPT_TYPES} value={insuranceStatus} onChange={chooseInsuranceStatus} disabled={busy} />
+          <p className="script-hint">
+            {settings.agentName} will follow the <b>{SCRIPT_TYPES.find((s) => s.id === insuranceStatus).label}</b> script: {settings.scripts[insuranceStatus].split('\n')[0].replace(/^Goal:\s*/i, '')}
+          </p>
         </div>
 
         <div className="field">

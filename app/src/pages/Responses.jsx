@@ -13,6 +13,15 @@ const FILTERS = [
 
 const INSURANCE = { new: 'New policy', renewal: 'Renewal', switching: 'Switching insurer' }
 
+// Flatten nested extracted data into [label, value] leaves so it reads as facts, not raw JSON.
+function flattenData(value, path = []) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return Object.entries(value).flatMap(([k, v]) => flattenData(v, [...path, k]))
+  }
+  const text = Array.isArray(value) ? value.join(', ') : value == null || value === '' ? '—' : String(value)
+  return [[path.slice(-2).map((k) => k.replace(/_/g, ' ')).join(' · '), text]]
+}
+
 function Detail({ call, onBack }) {
   const info = callInfo(call)
   const turns = parseTranscript(call.transcript)
@@ -26,7 +35,7 @@ function Detail({ call, onBack }) {
     ['Called at', formatWhen(call.created_at)],
     ['Cost', call.total_cost ? `$${(call.total_cost / 100).toFixed(2)}` : '—'],
   ]
-  const extracted = call.extracted_data && Object.keys(call.extracted_data).length ? call.extracted_data : null
+  const extracted = call.extracted_data && Object.keys(call.extracted_data).length ? flattenData(call.extracted_data) : null
 
   return (
     <div className="detail">
@@ -57,8 +66,8 @@ function Detail({ call, onBack }) {
         <section>
           <h4>Captured data</h4>
           <div className="facts">
-            {Object.entries(extracted).map(([k, v]) => (
-              <div key={k}><span>{k.replace(/_/g, ' ')}</span><b>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</b></div>
+            {extracted.map(([k, v], i) => (
+              <div key={i} className={v.length > 40 ? 'wide' : undefined}><span>{k}</span><b>{v}</b></div>
             ))}
           </div>
         </section>

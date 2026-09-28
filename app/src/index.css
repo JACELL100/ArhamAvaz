@@ -43,7 +43,11 @@ body {
 }
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-@media (max-width: 520px) { .grid-2 { grid-template-columns: 1fr; } }
+@media (max-width: 520px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .transcript { font-size: .9rem; }
+  input[type="time"], input[type="date"], input[type="datetime-local"] { min-height: 50px; -webkit-appearance: none; }
+}
 
 .field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .field > span { font-size: .78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
@@ -103,7 +107,7 @@ input:disabled { opacity: .6; }
 }
 .segmented button.active { color: var(--text); }
 .seg-icon { font-size: 1rem; }
-.seg-hint { margin: -10px 4px 0; font-size: .82rem; color: var(--muted); }
+.seg-hint { margin: -10px 2px 0; font-size: .82rem; color: var(--muted); }
 
 /* Chips */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -165,4 +169,3 @@ input:disabled { opacity: .6; }
 .transcript { margin: 0; white-space: pre-wrap; font: inherit; font-size: .88rem; line-height: 1.55; background: var(--field); padding: 14px; border-radius: 14px; max-height: 320px; overflow: auto; }
 audio { width: 100%; }
 
-footer { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 20px; }
