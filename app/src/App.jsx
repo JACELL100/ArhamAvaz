@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { HomeIcon, ListIcon, PhoneIcon, SettingsIcon } from './components/icons'
+import { HomeIcon, ListIcon, PhoneIcon, SettingsIcon, WalletIcon } from './components/icons'
+import BillingPage from './pages/BillingPage'
 import CallPage from './pages/CallPage'
 import Home from './pages/Home'
 import Responses from './pages/Responses'
@@ -11,10 +12,11 @@ const TABS = [
   { id: 'home', label: 'Home', Icon: HomeIcon },
   { id: 'call', label: 'Call', Icon: PhoneIcon },
   { id: 'responses', label: 'Responses', Icon: ListIcon },
+  { id: 'billing', label: 'Billing', Icon: WalletIcon },
   { id: 'settings', label: 'Settings', Icon: SettingsIcon },
 ]
-// Mobile: "Settings" lives in the top header, so the bottom tab bar only shows the rest.
-const TABBAR = TABS.filter((t) => t.id !== 'settings')
+// Mobile: "Billing" and "Settings" live in the top header, so the bottom tab bar only shows the rest.
+const TABBAR = TABS.filter((t) => t.id !== 'settings' && t.id !== 'billing')
 
 export default function App() {
   const params = new URLSearchParams(window.location.search)
@@ -74,6 +76,14 @@ export default function App() {
         </div>
         <button
           type="button"
+          className={`top-settings ${tab === 'billing' ? 'active' : ''}`}
+          aria-label="Billing"
+          onClick={() => go('billing')}
+        >
+          <WalletIcon />
+        </button>
+        <button
+          type="button"
           className={`top-settings ${tab === 'settings' ? 'active' : ''}`}
           aria-label="Settings"
           onClick={() => go('settings')}
@@ -88,6 +98,7 @@ export default function App() {
         {tab === 'responses' && (
           <Responses calls={calls} loading={loading} error={error} refresh={refresh} selectedId={selectedId} onSelect={setSelectedId} />
         )}
+        {tab === 'billing' && <BillingPage settings={settings} />}
         {tab === 'settings' && <SettingsPage settings={settings} onSave={updateSettings} />}
       </main>
 
