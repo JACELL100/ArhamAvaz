@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  agents    Agent[]
+}
+
+model Agent {
+  id              String   @id @default(uuid())
+  companyId       String
+  name            String
+  purpose         String   // e.g. "HRMS", "Cibil Score", "Evolve App"
+  language        String   // e.g. "en", "hi", "gu"
+  bolna_agent_id  String   // Reference to Bolna Agent ID
+  createdAt       DateTime @default(now())
+  company         Company  @relation(fields: [companyId], references: [id])
+}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { listCalls } from './bolna'
+import { getAgents } from './api'
 
 export default function useCalls() {
   const [calls, setCalls] = useState([])
@@ -8,6 +9,7 @@ export default function useCalls() {
 
   const refresh = useCallback(async () => {
     try {
+      // Fetch calls for all Bolna language agents
       setCalls(await listCalls())
       setError('')
     } catch (err) {
