@@ -13,8 +13,8 @@ const TABS = [
   { id: 'responses', label: 'Responses', Icon: ListIcon },
   { id: 'settings', label: 'Settings', Icon: SettingsIcon },
 ]
-// Mobile: "Call" lives in the top header, so the bottom tab bar only shows the rest.
-const TABBAR = TABS.filter((t) => t.id !== 'call')
+// Mobile: "Settings" lives in the top header, so the bottom tab bar only shows the rest.
+const TABBAR = TABS.filter((t) => t.id !== 'settings')
 
 export default function App() {
   const params = new URLSearchParams(window.location.search)
@@ -74,13 +74,11 @@ export default function App() {
         </div>
         <button
           type="button"
-          className={`top-call ${tab === 'call' ? 'active' : ''}`}
-          aria-current={tab === 'call' ? 'page' : undefined}
-          aria-label="New call"
-          onClick={() => go('call')}
+          className={`top-settings ${tab === 'settings' ? 'active' : ''}`}
+          aria-label="Settings"
+          onClick={() => go('settings')}
         >
-          <PhoneIcon />
-          <span>Call</span>
+          <SettingsIcon />
         </button>
       </header>
 

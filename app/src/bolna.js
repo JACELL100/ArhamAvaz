@@ -2,7 +2,7 @@ import { Capacitor } from '@capacitor/core'
 
 const API_KEY = import.meta.env.VITE_BOLNA_API_KEY
 const FROM_NUMBER = import.meta.env.VITE_BOLNA_FROM_NUMBER
-const BASE = Capacitor.isNativePlatform() ? 'https://api.bolna.ai' : '/bolna'
+const BASE = 'https://api.bolna.ai'
 
 // Hindi/Hinglish share one agent and English has a twin (ElevenLabs voice + Deepgram). Every regional language has its own
 // Sarvam-based agent, since the speech-to-text and voice language is fixed per agent.

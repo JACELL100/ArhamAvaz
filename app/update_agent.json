@@ -1,0 +1,50 @@
+{
+  "tasks": [
+    {
+      "task_type": "conversation",
+      "toolchain": {
+        "execution": "parallel",
+        "pipelines": [
+          ["transcriber", "llm", "synthesizer"]
+        ]
+      },
+      "task_config": {
+        "optimize_latency": true,
+        "hangup_after_silence": 15
+      },
+      "tools_config": {
+        "llm_agent": {
+          "agent_type": "simple_llm_agent",
+          "llm_config": {
+            "model": "azure/gpt-4.1-mini",
+            "provider": "azure",
+            "max_tokens": 250,
+            "temperature": 0.2
+          }
+        },
+        "synthesizer": {
+          "stream": true,
+          "caching": true,
+          "provider": "sarvam",
+          "audio_format": "wav",
+          "provider_config": {
+            "model": "bulbul:v3",
+            "voice": "Priya",
+            "language": "gu",
+            "voice_id": "priya",
+            "api_key": "sk_f29tp7s1_5CUfDkW7hjuun8bdDZdNQxcN"
+          }
+        },
+        "transcriber": {
+          "task": "transcribe",
+          "stream": true,
+          "language": "gu",
+          "provider": "sarvam",
+          "provider_config": {
+            "api_key": "sk_f29tp7s1_5CUfDkW7hjuun8bdDZdNQxcN"
+          }
+        }
+      }
+    }
+  ]
+}

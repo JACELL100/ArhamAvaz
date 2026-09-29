@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "advance-rush-451214-p2"
+  },
+  "targets": {
+    "advance-rush-451214-p2": {
+      "hosting": {
+        "arham-avaz": [
+          "arham-avaz"
+        ]
+      }
+    }
+  }
+}

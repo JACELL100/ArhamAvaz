@@ -5,17 +5,8 @@ const KEY = 'arhamavaz.settings.v2'
 // `speech` is the BCP-47 code used for voice dictation in that language
 export const LANGUAGES = [
   { id: 'hi', label: 'हिन्दी', name: 'Hindi', speech: 'hi-IN' },
-  { id: 'gu', label: 'ગુજરાતી', name: 'Gujarati', speech: 'gu-IN' },
   { id: 'en', label: 'English', name: 'English', speech: 'en-IN' },
   { id: 'hinglish', label: 'Hinglish', name: 'Hinglish', speech: 'hi-IN' },
-  { id: 'mr', label: 'मराठी', name: 'Marathi', speech: 'mr-IN' },
-  { id: 'ta', label: 'தமிழ்', name: 'Tamil', speech: 'ta-IN' },
-  { id: 'te', label: 'తెలుగు', name: 'Telugu', speech: 'te-IN' },
-  { id: 'kn', label: 'ಕನ್ನಡ', name: 'Kannada', speech: 'kn-IN' },
-  { id: 'ml', label: 'മലയാളം', name: 'Malayalam', speech: 'ml-IN' },
-  { id: 'bn', label: 'বাংলা', name: 'Bengali', speech: 'bn-IN' },
-  { id: 'pa', label: 'ਪੰਜਾਬੀ', name: 'Punjabi', speech: 'pa-IN' },
-  { id: 'od', label: 'ଓଡ଼ିଆ', name: 'Odia', speech: 'or-IN' },
 ]
 
 export const INSURANCE_TYPES = [

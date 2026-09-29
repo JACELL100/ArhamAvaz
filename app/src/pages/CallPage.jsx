@@ -48,7 +48,6 @@ export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [language, setLanguage] = useState('hi')
-  const [goal, setGoal] = useState('')
   const [members, setMembers] = useState('family')
   const [age, setAge] = useState('')
   const [cover, setCover] = useState('')
@@ -120,7 +119,7 @@ export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
   function userDataFor({ name, language, notes }) {
     return buildUserData(settings, {
       insuranceType, insuranceStatus, language, name, members, age, cover, vehicleType, vehicleModel,
-      goal: joinContext(goal, notes),
+      goal: notes,
     })
   }
 
@@ -347,23 +346,6 @@ export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
           </div>
         </div>
 
-        <div className="field">
-          <span>Call goal</span>
-          <VoiceTextarea
-            value={goal}
-            onChange={setGoal}
-            lang={LANGUAGES.find((l) => l.id === language).speech}
-            placeholder={bulk
-              ? 'What should every call in this list achieve? E.g. Get each customer to renew before their policy expires this month'
-              : 'What should this call achieve? Type or tap the mic. E.g. Get him to add his mother to the family floater before 15 Oct'}
-            disabled={busy}
-          />
-          <p className="script-hint">
-            {goal.trim()
-              ? <>{settings.agentName} will steer the conversation towards this goal and use the script only as support.</>
-              : <>Optional. Without a goal, {settings.agentName} follows the standard script.</>}
-          </p>
-        </div>
 
         {insuranceType === 'health' && (
           <div className="grid-2">
