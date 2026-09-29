@@ -9,9 +9,19 @@
     ],
     "rewrites": [
       {
+        "source": "/api/**",
+        "function": {
+          "functionId": "billing",
+          "region": "asia-south1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
     ]
+  },
+  "functions": {
+    "source": "functions"
   }
 }

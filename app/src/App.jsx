@@ -1,8 +1,9 @@
 import { Capacitor } from '@capacitor/core'
 import { useEffect, useState } from 'react'
-import { HomeIcon, ListIcon, PhoneIcon, SettingsIcon, AgentIcon } from './components/icons'
+import { HomeIcon, ListIcon, PhoneIcon, SettingsIcon, AgentIcon, WalletIcon } from './components/icons'
 import LandingPage from './components/landing/LandingPage'
 import { GlobeIcon } from './components/landing/LandingIcons'
+import BillingPage from './pages/BillingPage'
 import CallPage from './pages/CallPage'
 import Home from './pages/Home'
 import Responses from './pages/Responses'
@@ -20,10 +21,11 @@ const TABS = [
   { id: 'call', label: 'Call', Icon: PhoneIcon },
   { id: 'responses', label: 'Responses', Icon: ListIcon },
   { id: 'agents', label: 'Agents', Icon: AgentIcon },
+  { id: 'billing', label: 'Billing', Icon: WalletIcon },
   { id: 'settings', label: 'Settings', Icon: SettingsIcon },
 ]
-// Mobile: "Settings" lives in the top header, so the bottom tab bar only shows the rest.
-const TABBAR = TABS.filter((t) => t.id !== 'settings')
+// Mobile: "Billing" and "Settings" live in the top header, so the bottom tab bar only shows the rest.
+const TABBAR = TABS.filter((t) => t.id !== 'settings' && t.id !== 'billing')
 
 export default function App() {
   const [tab, setTab] = useState(() => {
@@ -145,6 +147,14 @@ export default function App() {
           </button>
           <button
             type="button"
+            className={`top-settings ${tab === 'billing' ? 'active' : ''}`}
+            aria-label="Billing"
+            onClick={() => go('billing')}
+          >
+            <WalletIcon />
+          </button>
+          <button
+            type="button"
             className={`top-settings ${tab === 'settings' ? 'active' : ''}`}
             aria-label="Settings"
             onClick={() => go('settings')}
@@ -161,6 +171,7 @@ export default function App() {
           <Responses calls={calls} loading={loading} error={error} refresh={refresh} selectedId={selectedId} onSelect={setSelectedId} />
         )}
         {tab === 'agents' && <AgentsPage />}
+        {tab === 'billing' && <BillingPage settings={settings} />}
         {tab === 'settings' && (
           <div className="narrow" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div className="card form" style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
