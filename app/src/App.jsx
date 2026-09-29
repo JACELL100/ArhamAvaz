@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react'
+import { Capacitor } from '@capacitor/core'
+import { useEffect, useState } from 'react'
 import { HomeIcon, ListIcon, PhoneIcon, SettingsIcon, AgentIcon } from './components/icons'
+import LandingPage from './components/landing/LandingPage'
+import { GlobeIcon } from './components/landing/LandingIcons'
 import CallPage from './pages/CallPage'
 import Home from './pages/Home'
 import Responses from './pages/Responses'
@@ -23,12 +26,21 @@ const TABS = [
 const TABBAR = TABS.filter((t) => t.id !== 'settings')
 
 export default function App() {
-  const params = new URLSearchParams(window.location.search)
-  const [tab, setTab] = useState(() => (TABS.some((t) => t.id === params.get('tab')) ? params.get('tab') : 'home'))
-  const [selectedId, setSelectedId] = useState(() => params.get('call'))
+  const [tab, setTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    const current = params.get('tab')
+    if (current === 'landing') return 'landing'
+    if (TABS.some((t) => t.id === current)) return current
+    // The installed Android app opens straight into the dashboard; the website opens on the landing page
+    return Capacitor.isNativePlatform() ? 'home' : 'landing'
+  })
+  const [selectedId, setSelectedId] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('call')
+  })
   const [settings, setSettings] = useState(loadSettings)
-  const { calls, loading, error, refresh } = useCalls()
-  
+  const { calls, loading, error, refresh } = useCalls(tab !== 'landing')
+
   const [company, setCompany] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [devCode, setDevCode] = useState('')
@@ -41,6 +53,17 @@ export default function App() {
       setAuthLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (tab === 'landing') {
+      params.delete('tab')
+    } else {
+      params.set('tab', tab)
+    }
+    const query = params.toString() ? `?${params.toString()}` : window.location.pathname
+    window.history.replaceState(null, '', query)
+  }, [tab])
 
   function go(next) {
     setTab(next)
@@ -55,6 +78,10 @@ export default function App() {
   function updateSettings(next) {
     setSettings(next)
     saveSettings(next)
+  }
+
+  if (tab === 'landing') {
+    return <LandingPage onLaunchApp={(next) => go(next || 'call')} />
   }
 
   const renderNav = (items) =>
@@ -78,31 +105,53 @@ export default function App() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand">
+        <div className="brand" style={{ cursor: 'pointer' }} onClick={() => go('landing')}>
           <img src="/logo.jpg" alt="" className="logo" />
           <div>
             <h1>ArhamAvaz</h1>
             <p>{company.name} · AI calls</p>
           </div>
         </div>
-        <nav>{renderNav(TABS)}</nav>
+        <nav>
+          {renderNav(TABS)}
+          <button
+            type="button"
+            className="nav-item"
+            style={{ marginTop: '12px', borderTop: '1px solid var(--line)', paddingTop: '14px' }}
+            onClick={() => go('landing')}
+          >
+            <GlobeIcon style={{ width: 18, height: 18 }} />
+            <span>Landing Page</span>
+          </button>
+        </nav>
         <footer>Powered by Bolna</footer>
       </aside>
 
       <header className="mobile-top">
-        <img src="/logo.jpg" alt="" className="logo" />
-        <div className="mobile-title">
+        <img src="/logo.jpg" alt="" className="logo" onClick={() => go('landing')} style={{ cursor: 'pointer' }} />
+        <div className="mobile-title" onClick={() => go('landing')} style={{ cursor: 'pointer' }}>
           <h1>ArhamAvaz</h1>
           <p>{company.name}</p>
         </div>
-        <button
-          type="button"
-          className={`top-settings ${tab === 'settings' ? 'active' : ''}`}
-          aria-label="Settings"
-          onClick={() => go('settings')}
-        >
-          <SettingsIcon />
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            type="button"
+            className="top-settings"
+            aria-label="Website"
+            onClick={() => go('landing')}
+            title="Landing Page"
+          >
+            <GlobeIcon style={{ width: 18, height: 18 }} />
+          </button>
+          <button
+            type="button"
+            className={`top-settings ${tab === 'settings' ? 'active' : ''}`}
+            aria-label="Settings"
+            onClick={() => go('settings')}
+          >
+            <SettingsIcon />
+          </button>
+        </div>
       </header>
 
       <main className="content" key={tab}>

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { listCalls } from './bolna'
 import { getAgents } from './api'
 
-export default function useCalls() {
+// `enabled` is off on the public landing page so visitors don't trigger Bolna API calls
+export default function useCalls(enabled = true) {
   const [calls, setCalls] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -20,10 +21,11 @@ export default function useCalls() {
   }, [])
 
   useEffect(() => {
+    if (!enabled) return undefined
     refresh()
     const id = setInterval(() => document.visibilityState === 'visible' && refresh(), 15000)
     return () => clearInterval(id)
-  }, [refresh])
+  }, [refresh, enabled])
 
   return { calls, loading, error, refresh }
 }
