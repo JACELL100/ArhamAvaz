@@ -24,8 +24,14 @@ const TABS = [
   { id: 'billing', label: 'Billing', Icon: WalletIcon },
   { id: 'settings', label: 'Settings', Icon: SettingsIcon },
 ]
-// Mobile: "Billing" and "Settings" live in the top header, so the bottom tab bar only shows the rest.
-const TABBAR = TABS.filter((t) => t.id !== 'settings' && t.id !== 'billing')
+// Mobile: bottom tab bar layout (Call in middle)
+const TABBAR = [
+  { id: 'home', label: 'Home', Icon: HomeIcon },
+  { id: 'agents', label: 'Agents', Icon: AgentIcon },
+  { id: 'call', label: 'Call', Icon: PhoneIcon },
+  { id: 'responses', label: 'Responses', Icon: ListIcon },
+  { id: 'settings', label: 'Settings', Icon: SettingsIcon },
+]
 
 export default function App() {
   const [tab, setTab] = useState(() => {
@@ -138,14 +144,6 @@ export default function App() {
             onClick={() => go('billing')}
           >
             <WalletIcon />
-          </button>
-          <button
-            type="button"
-            className={`top-settings ${tab === 'settings' ? 'active' : ''}`}
-            aria-label="Settings"
-            onClick={() => go('settings')}
-          >
-            <SettingsIcon />
           </button>
         </div>
       </header>

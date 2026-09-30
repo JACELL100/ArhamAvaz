@@ -666,7 +666,7 @@ async function requestBolna(path, options = {}) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const detail = data.message || data.detail || data.error;
-    throw new Error(typeof detail === 'string' ? detail : \`Request failed (\${res.status})\`);
+    throw new Error(typeof detail === 'string' ? detail : `Request failed (${res.status})`);
   }
   return data;
 }
@@ -752,7 +752,7 @@ app.get('/api/calls/:id', auth, async (req, res) => {
     
     if (!call.id.startsWith('sched_')) {
       try {
-        const bolnaData = await requestBolna(\`/executions/\${call.id}\`);
+        const bolnaData = await requestBolna(`/executions/${call.id}`);
         if (bolnaData && bolnaData.status && bolnaData.status !== call.status) {
           await dbRun('UPDATE calls SET status = ? WHERE id = ?', [bolnaData.status, call.id]);
           bolnaData.id = call.id;
