@@ -15,7 +15,11 @@ initializeApp({
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'arhamavaz-super-secret-key-2024';
 
@@ -86,6 +90,38 @@ async function initDb() {
         createdAt BIGINT NOT NULL,
         lastUsedAt BIGINT,
         FOREIGN KEY(companyId) REFERENCES companies(id)
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallets (
+        companyId TEXT PRIMARY KEY,
+        balance INT DEFAULT 0,
+        balanceUsd INT DEFAULT 0,
+        updatedAt BIGINT
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallet_transactions (
+        id TEXT PRIMARY KEY,
+        companyId TEXT,
+        amount INT,
+        currency TEXT,
+        gateway TEXT,
+        description TEXT,
+        status TEXT,
+        createdAt BIGINT
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id TEXT PRIMARY KEY,
+        companyId TEXT,
+        gateway TEXT,
+        amount INT,
+        createdAt BIGINT
       )
     `);
 
@@ -444,6 +480,135 @@ app.delete('/api/agents/:id', auth, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+
+// --- Billing ---
+const LIMITS = { INR: { min: 1000, max: 1000000 }, USD: { min: 50, max: 10000 } };
+const gstRate = () => Number(process.env.GST_RATE || 0.18);
+const balanceField = (currency) => (currency === 'USD' ? 'balanceUsd' : 'balance');
+const safeEqual = (a, b) => {
+  const x = Buffer.from(a), y = Buffer.from(b);
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+};
+const hmac = (secret, data, enc = 'hex') => crypto.createHmac('sha256', secret).update(data).digest(enc);
+
+function parseAmount(amount, currency) {
+  const { min, max } = LIMITS[currency];
+  const amt = Number(amount);
+  if (!Number.isFinite(amt) || amt < min || amt > max) {
+    throw new Error(`Amount must be between ${min} and ${max} ${currency}`);
+  }
+  return Math.round(amt);
+}
+
+async function creditWallet(companyId, { paymentId, gateway, amount, currency, description }) {
+  const txnId = `${gateway}_${paymentId}`;
+  
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const existing = await client.query('SELECT id FROM wallet_transactions WHERE id = $1', [txnId]);
+    if (existing.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return;
+    }
+    const balField = balanceField(currency);
+    await client.query(`
+      INSERT INTO wallets (companyId, ${balField}, updatedAt) 
+      VALUES ($1, $2, $3) 
+      ON CONFLICT (companyId) DO UPDATE SET ${balField} = wallets.${balField} + $2, updatedAt = $3
+    `, [companyId, amount, Date.now()]);
+    
+    await client.query(`
+      INSERT INTO wallet_transactions (id, companyId, amount, currency, gateway, description, status, createdAt)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `, [txnId, companyId, amount, currency, gateway, description, 'paid', Date.now()]);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+app.get('/api/wallet', auth, async (req, res) => {
+  try {
+    let wallet = await dbGet('SELECT * FROM wallets WHERE companyId = ?', [req.companyId]);
+    if (!wallet) {
+      wallet = { balance: 0, balanceUsd: 0 };
+    }
+    const txns = await dbAll('SELECT * FROM wallet_transactions WHERE companyId = ? ORDER BY createdAt DESC LIMIT 25', [req.companyId]);
+    res.json({
+      balance: wallet.balance || 0,
+      balanceUsd: wallet.balanceUsd || 0,
+      transactions: txns
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const rzpAuth = () => 'Basic ' + Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64');
+
+app.post('/api/razorpay/order', auth, async (req, res) => {
+  try {
+    if (!process.env.RAZORPAY_KEY_ID) return res.status(503).json({ error: 'Razorpay is not configured' });
+    const amount = parseAmount(req.body.amount, 'INR');
+    const total = Math.round(amount * (1 + gstRate()) * 100);
+    
+    const rzpRes = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: { Authorization: rzpAuth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: total, currency: 'INR', notes: { baseAmount: String(amount) } }),
+    });
+    const order = await rzpRes.json();
+    if (!rzpRes.ok) return res.status(502).json({ error: order.error?.description || 'Razorpay order failed' });
+    
+    await dbRun("INSERT INTO orders (id, companyId, gateway, amount, createdAt) VALUES (?, ?, 'razorpay', ?, ?)", 
+      [order.id, req.companyId, amount, Date.now()]);
+    
+    res.json({ keyId: process.env.RAZORPAY_KEY_ID, orderId: order.id, amount: order.amount, currency: order.currency });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/razorpay/verify', auth, async (req, res) => {
+  try {
+    const { razorpay_order_id: orderId, razorpay_payment_id: paymentId, razorpay_signature: signature } = req.body;
+    if (!orderId || !paymentId || !signature) return res.status(400).json({ error: 'Missing payment fields' });
+    if (!safeEqual(hmac(process.env.RAZORPAY_KEY_SECRET, `${orderId}|${paymentId}`), signature)) {
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+    const order = await dbGet('SELECT * FROM orders WHERE id = ?', [orderId]);
+    if (!order) return res.status(404).json({ error: 'Unknown order' });
+    
+    await creditWallet(order.companyid || order.companyId, { paymentId, gateway: 'razorpay', amount: order.amount, currency: 'INR', description: 'Wallet top-up' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/razorpay/webhook', async (req, res) => {
+  try {
+    const signature = req.get('x-razorpay-signature') || '';
+    if (!process.env.RAZORPAY_WEBHOOK_SECRET || !safeEqual(hmac(process.env.RAZORPAY_WEBHOOK_SECRET, req.rawBody), signature)) {
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+    const payment = req.body?.payload?.payment?.entity;
+    if (req.body?.event === 'payment.captured' && payment) {
+      const order = await dbGet('SELECT * FROM orders WHERE id = ?', [payment.order_id]);
+      if (order) {
+        await creditWallet(order.companyid || order.companyId, { paymentId: payment.id, gateway: 'razorpay', amount: order.amount, currency: 'INR', description: 'Wallet top-up' });
+      }
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
