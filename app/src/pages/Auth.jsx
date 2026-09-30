@@ -13,21 +13,21 @@ const BARS = Array.from({ length: 13 }, (_, i) => [10, 22, 34, 24, 40, 56, 36, 4
 export default function Auth({ onAuth }) {
   const [isLogin, setIsLogin] = useState(false);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const score = passwordScore(password);
-  const emailOk = /^\S+@\S+\.\S+$/.test(email);
+  const phoneOk = /^\d{10}$/.test(phone);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const data = isLogin ? await login(email, password) : await signup(name, email, password);
+      const data = isLogin ? await login(phone, password) : await signup(name, phone, password);
       localStorage.setItem('arhamavaz_token', data.token);
       onAuth(data.company, data.devCode);
     } catch (err) {
@@ -63,7 +63,7 @@ export default function Auth({ onAuth }) {
 
         <form className="ob-card" onSubmit={handleSubmit}>
           <h2>{isLogin ? 'Log in' : 'Create your account'}</h2>
-          <p className="ob-card-sub">{isLogin ? 'Enter your work email and password.' : 'Start deploying enterprise voice agents in minutes.'}</p>
+          <p className="ob-card-sub">{isLogin ? 'Enter your mobile number and password.' : 'Start deploying enterprise voice agents in minutes.'}</p>
 
           {!isLogin && (
             <label className="ob-field">
@@ -72,11 +72,11 @@ export default function Auth({ onAuth }) {
             </label>
           )}
           <label className="ob-field">
-            <span>Work email</span>
+            <span>Mobile Number</span>
             <div className="ob-input">
-              <MailIcon />
-              <input type="email" required placeholder="alex@company.com" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} />
-              {emailOk && <em className="ob-ok" aria-hidden="true">✓</em>}
+              <PhoneIcon />
+              <input type="tel" required placeholder="9876543210" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={loading} />
+              {phoneOk && <em className="ob-ok" aria-hidden="true">✓</em>}
             </div>
           </label>
           <label className="ob-field">

@@ -22,8 +22,8 @@ export function Footer() {
 }
 
 const STEPS = [
-  { id: 'signup', label: 'Create your account', hint: 'Name, email and password' },
-  { id: 'verify', label: 'Verify your email', hint: 'Enter the 6-digit code' },
+  { id: 'signup', label: 'Create your account', hint: 'Name, mobile and password' },
+  { id: 'verify', label: 'Verify your mobile', hint: 'Enter the 6-digit code' },
   { id: 'business', label: 'Your business', hint: 'Industry and use cases' },
   { id: 'workspace', label: 'Create workspace', hint: 'Name, URL and team' },
 ];

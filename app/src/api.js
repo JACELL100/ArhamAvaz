@@ -17,17 +17,17 @@ export async function request(path, options = {}) {
   return data;
 }
 
-export function signup(name, email, password) {
+export function signup(name, phone, password) {
   return request('/signup', {
     method: 'POST',
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, phone, password }),
   });
 }
 
-export function login(email, password) {
+export function login(phone, password) {
   return request('/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ phone, password }),
   });
 }
 
@@ -50,8 +50,8 @@ export function deleteAgent(id) {
   return request(`/agents/${id}`, { method: 'DELETE' });
 }
 
-export function verifyEmail(code) {
-  return request('/verify-email', { method: 'POST', body: JSON.stringify({ code }) });
+export function verifyOtp(code) {
+  return request('/verify-otp', { method: 'POST', body: JSON.stringify({ code }) });
 }
 
 export function resendOtp() {
