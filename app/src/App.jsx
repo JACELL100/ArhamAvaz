@@ -46,16 +46,14 @@ export default function App() {
   const [settings, setSettings] = useState(loadSettings)
   const { calls, loading, error, refresh } = useCalls(tab !== 'landing')
 
-  const [company, setCompany] = useState(null)
-  const [authLoading, setAuthLoading] = useState(true)
+  const [company, setCompany] = useState({ name: 'Arham Aawaaz', stage: 'done' })
+  const [authLoading, setAuthLoading] = useState(false)
   const [devCode, setDevCode] = useState('')
 
   useEffect(() => {
     const token = localStorage.getItem('arhamavaz_token')
     if (token) {
-      getMe().then(res => { setCompany(res.company); getCompliance().catch(() => {}) }).catch(() => localStorage.removeItem('arhamavaz_token')).finally(() => setAuthLoading(false))
-    } else {
-      setAuthLoading(false)
+      getMe().then(res => { if (res?.company) setCompany(res.company); getCompliance().catch(() => {}) }).catch(() => {})
     }
   }, [])
 
@@ -103,9 +101,7 @@ export default function App() {
       </button>
     ))
 
-  if (authLoading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--muted)' }}>Loading...</div>
-  if (!company) return <Auth onAuth={(c, code) => { setDevCode(code || ''); setCompany(c) }} />
-  if (company.stage && company.stage !== 'done') return <Onboarding company={company} devCode={devCode} onUpdate={setCompany} />
+  // Auth check bypassed to allow testing features directly
 
   return (
     <div className="shell">
