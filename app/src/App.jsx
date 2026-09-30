@@ -1,20 +1,26 @@
 import { Capacitor } from '@capacitor/core'
 import { useEffect, useState } from 'react'
-import { HomeIcon, ListIcon, PhoneIcon, SettingsIcon, WalletIcon } from './components/icons'
+import { AgentIcon, HomeIcon, ListIcon, PhoneIcon, SettingsIcon, WalletIcon } from './components/icons'
 import LandingPage from './components/landing/LandingPage'
-import { GlobeIcon } from './components/landing/LandingIcons'
 import BillingPage from './pages/BillingPage'
 import CallPage from './pages/CallPage'
 import Home from './pages/Home'
 import Responses from './pages/Responses'
 import SettingsPage from './pages/SettingsPage'
+import Auth from './pages/Auth'
+import AgentsPage from './pages/AgentsPage'
+import Onboarding from './pages/Onboarding'
+import './onboarding.css'
 import { loadSettings, saveSettings } from './settings'
 import useCalls from './useCalls'
+import { getMe } from './api'
+import { getCompliance } from './compliance'
 
 const TABS = [
   { id: 'home', label: 'Home', Icon: HomeIcon },
   { id: 'call', label: 'Call', Icon: PhoneIcon },
   { id: 'responses', label: 'Responses', Icon: ListIcon },
+  { id: 'agents', label: 'Agents', Icon: AgentIcon },
   { id: 'billing', label: 'Billing', Icon: WalletIcon },
   { id: 'settings', label: 'Settings', Icon: SettingsIcon },
 ]
@@ -36,6 +42,19 @@ export default function App() {
   })
   const [settings, setSettings] = useState(loadSettings)
   const { calls, loading, error, refresh } = useCalls(tab !== 'landing')
+
+  const [company, setCompany] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [devCode, setDevCode] = useState('')
+
+  useEffect(() => {
+    const token = localStorage.getItem('arhamavaz_token')
+    if (token) {
+      getMe().then(res => { setCompany(res.company); getCompliance().catch(() => {}) }).catch(() => localStorage.removeItem('arhamavaz_token')).finally(() => setAuthLoading(false))
+    } else {
+      setAuthLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -76,32 +95,27 @@ export default function App() {
         aria-current={tab === id ? 'page' : undefined}
         onClick={() => go(id)}
       >
-        <Icon />
+        {Icon ? <Icon /> : <span style={{fontSize:'1.2rem'}}>🤖</span>}
         <span>{label}</span>
       </button>
     ))
 
+  if (authLoading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--muted)' }}>Loading...</div>
+  if (!company) return <Auth onAuth={(c, code) => { setDevCode(code || ''); setCompany(c) }} />
+  if (company.stage && company.stage !== 'done') return <Onboarding company={company} devCode={devCode} onUpdate={setCompany} />
+
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand" style={{ cursor: 'pointer' }} onClick={() => go('landing')}>
+        <div className="brand">
           <img src="/logo.jpg" alt="" className="logo" />
           <div>
             <h1>ArhamAawaaz</h1>
-            <p>{settings.companyName} · AI calls</p>
+            <p>{company?.name || settings.companyName || 'AI calls'}</p>
           </div>
         </div>
         <nav>
           {renderNav(TABS)}
-          <button
-            type="button"
-            className="nav-item"
-            style={{ marginTop: '12px', borderTop: '1px solid var(--line)', paddingTop: '14px' }}
-            onClick={() => go('landing')}
-          >
-            <GlobeIcon style={{ width: 18, height: 18 }} />
-            <span>Landing Page</span>
-          </button>
         </nav>
         <footer>Powered by Bolna</footer>
       </aside>
@@ -110,18 +124,9 @@ export default function App() {
         <img src="/logo.jpg" alt="" className="logo" onClick={() => go('landing')} style={{ cursor: 'pointer' }} />
         <div className="mobile-title" onClick={() => go('landing')} style={{ cursor: 'pointer' }}>
           <h1>ArhamAawaaz</h1>
-          <p>{settings.companyName || 'AI calls'}</p>
+          <p>{company?.name || settings.companyName || 'AI calls'}</p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            type="button"
-            className="top-settings"
-            aria-label="Website"
-            onClick={() => go('landing')}
-            title="Landing Page"
-          >
-            <GlobeIcon style={{ width: 18, height: 18 }} />
-          </button>
           <button
             type="button"
             className={`top-settings ${tab === 'billing' ? 'active' : ''}`}
@@ -147,8 +152,9 @@ export default function App() {
         {tab === 'responses' && (
           <Responses calls={calls} loading={loading} error={error} refresh={refresh} selectedId={selectedId} onSelect={setSelectedId} />
         )}
+        {tab === 'agents' && <AgentsPage settings={settings} onSaveSettings={updateSettings} />}
         {tab === 'billing' && <BillingPage settings={settings} />}
-        {tab === 'settings' && <SettingsPage settings={settings} onSave={updateSettings} />}
+        {tab === 'settings' && <SettingsPage company={company} onLogout={() => { localStorage.removeItem('arhamavaz_token'); setCompany(null) }} />}
       </main>
 
       <nav className="tabbar">{renderNav(TABBAR)}</nav>

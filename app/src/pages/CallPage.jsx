@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getExecution, startCall } from '../bolna'
-import { buildUserData, INSURANCE_TYPES, LANGUAGES, MEMBERS, SCRIPT_TYPES, VEHICLES } from '../settings'
+import { buildUserData, INSURANCE_TYPES, MEMBERS, SCRIPT_TYPES, VEHICLES } from '../settings'
 import { isValidPhone, statusTone, toE164 } from '../format'
 import { downloadTemplate, parseContactsFile } from '../contactsFile'
 import PageHeader from '../components/PageHeader'
@@ -44,16 +44,19 @@ function contactPill(c) {
 
 export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
   const [mode, setMode] = useState('single')
-  const [insuranceType, setInsuranceType] = useState('health')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  const [language, setLanguage] = useState('hi')
-  const [members, setMembers] = useState('family')
-  const [age, setAge] = useState('')
-  const [cover, setCover] = useState('')
-  const [vehicleType, setVehicleType] = useState('car')
-  const [vehicleModel, setVehicleModel] = useState('')
-  const [insuranceStatus, setInsuranceStatus] = useState('new')
+  
+  const [agents, setAgents] = useState([])
+  const [agentId, setAgentId] = useState('')
+
+  useEffect(() => {
+    import('../api').then(m => m.getAgents()).then(data => {
+      setAgents(data)
+      if (data.length > 0) setAgentId(data[0].id)
+    }).catch(console.error)
+  }, [])
+  
   const [when, setWhen] = useState('now')
   const [scheduledFor, setScheduledFor] = useState(() => localInputValue(60))
   const [spacing, setSpacing] = useState(3)
@@ -116,11 +119,27 @@ export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
     return t
   }
 
-  function userDataFor({ name, language, notes }) {
-    return buildUserData(settings, {
-      insuranceType, insuranceStatus, language, name, members, age, cover, vehicleType, vehicleModel,
-      goal: notes,
-    })
+  function userDataFor({ name, language }, agent) {
+    const trimmedName = name?.trim() || 'not specified'
+    const greeting = agent.greeting
+      .replaceAll('{name}', name ? (language === 'hi' ? `${name} जी` : language === 'hinglish' ? `${name} ji` : name) : '')
+      .replaceAll('{agent}', agent.agentName)
+      .replaceAll('{company}', agent.companyName)
+      .replace(/\s+([,.।?!])/g, '$1')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+
+    return {
+      customer_name: trimmedName,
+      agent_name: agent.agentName,
+      company_name: agent.companyName,
+      language: language,
+      call_goal: agent.purpose,
+      greeting: greeting,
+      script: agent.script,
+      guidelines: agent.guidelines,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }
   }
 
   async function handleSubmit(e) {
@@ -143,7 +162,10 @@ export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
     setExecution(null)
     setExecutionId(null)
     try {
-      const res = await startCall({ phone: number, language, userData: userDataFor({ name, language }), scheduledAt })
+      const selectedAgent = agents.find(a => a.id === agentId)
+      if (!selectedAgent) throw new Error('Please select an agent first')
+      const language = selectedAgent.language
+      const res = await startCall({ language, phone: number, userData: userDataFor({ name, language }, selectedAgent), scheduledAt })
       if (scheduledAt) {
         setExecution({ status: 'scheduled', scheduledAt })
       } else {
@@ -214,11 +236,16 @@ export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
     for (let i = 0; i < queue.length; i++) {
       if (stopRef.current) break
       const c = queue[i]
-      const lang = c.language || language
+      const selectedAgent = agents.find(a => a.id === (c.agentId || agentId))
+      if (!selectedAgent) {
+        updateContact(c.id, { status: 'pending', error: 'Agent not found' })
+        continue
+      }
+      const lang = selectedAgent.language
       updateContact(c.id, { status: 'calling', error: null })
       const scheduledAt = start ? new Date(start.getTime() + i * Math.max(0, spacing) * 60000).toISOString() : undefined
       try {
-        const res = await startCall({ phone: c.phone, language: lang, userData: userDataFor({ name: c.name, language: lang, notes: c.notes }), scheduledAt })
+        const res = await startCall({ language: lang, phone: c.phone, userData: userDataFor({ name: c.name, language: lang }, selectedAgent), scheduledAt })
         updateContact(c.id, { status: scheduledAt ? 'scheduled' : res.status || 'queued', executionId: res.execution_id || null, scheduledAt })
       } catch (err) {
         updateContact(c.id, { status: 'pending', error: err.message })
@@ -233,8 +260,6 @@ export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
   const status = execution?.status
   const inProgress = status && !FINAL_STATUSES.includes(status)
   const busy = loading || inProgress || running
-  const scriptLabel = SCRIPT_TYPES.find((s) => s.id === insuranceStatus).label
-  const typeLabel = INSURANCE_TYPES.find((t) => t.id === insuranceType).label
   const bulk = mode === 'bulk'
 
   const bulkLabel = toPlace.length === 0
@@ -247,11 +272,6 @@ export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
     <div className="narrow">
       <PageHeader title="New call" subtitle="Call one customer, or upload a list and the AI advisor will call each of them." />
       <form className="card form" onSubmit={handleSubmit}>
-        <div className="field">
-          <span>Insurance type</span>
-          <Segmented options={INSURANCE_TYPES} value={insuranceType} onChange={setInsuranceType} disabled={busy} />
-        </div>
-
         <div className="field">
           <span>Who to call</span>
           <Segmented options={MODES} value={mode} onChange={(m) => { setMode(m); setError('') }} disabled={busy} />
@@ -315,9 +335,9 @@ export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
                           }}
                           disabled={locked}
                         />
-                        <select className="bulk-lang" value={c.language || ''} onChange={(e) => updateContact(c.id, { language: e.target.value || undefined })} disabled={locked}>
-                          <option value="">Default language</option>
-                          {LANGUAGES.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+                        <select className="bulk-lang" value={c.agentId || ''} onChange={(e) => updateContact(c.id, { agentId: e.target.value || undefined })} disabled={locked}>
+                          <option value="">Default Agent</option>
+                          {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                         </select>
                         <button type="button" className="icon-btn bulk-remove" onClick={() => setContacts((cs) => cs.filter((x) => x.id !== c.id))} disabled={busy} aria-label="Remove contact">
                           <XIcon />
@@ -340,59 +360,14 @@ export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
         )}
 
         <div className="field">
-          <span>{bulk ? 'Default language' : 'Language'}</span>
+          <span>{bulk ? 'Default agent' : 'Agent'}</span>
           <div className="lang-scroll">
-            <Chips options={LANGUAGES} value={language} onChange={setLanguage} disabled={busy} />
+            <Segmented options={agents.map(a => ({ id: a.id, label: a.name }))} value={agentId} onChange={setAgentId} disabled={busy || agents.length === 0} />
           </div>
+          {agents.length === 0 && <p className="error">You have no agents. Go to the Agents tab to create one.</p>}
         </div>
 
 
-        {insuranceType === 'health' && (
-          <div className="grid-2">
-            <div className="field">
-              <span>Cover for</span>
-              <Chips options={MEMBERS} value={members} onChange={setMembers} disabled={busy} />
-            </div>
-            <label className="field">
-              <span>Eldest member age</span>
-              <input type="number" inputMode="numeric" min="0" max="110" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Optional" disabled={busy} />
-            </label>
-          </div>
-        )}
-
-        {insuranceType === 'life' && (
-          <div className="grid-2">
-            <label className="field">
-              <span>Customer age</span>
-              <input type="number" inputMode="numeric" min="18" max="80" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Optional" disabled={busy} />
-            </label>
-            <label className="field">
-              <span>Cover wanted</span>
-              <input value={cover} onChange={(e) => setCover(e.target.value)} placeholder="e.g. ₹1 crore (optional)" disabled={busy} />
-            </label>
-          </div>
-        )}
-
-        {insuranceType === 'motor' && (
-          <div className="grid-2">
-            <div className="field">
-              <span>Vehicle</span>
-              <Segmented options={VEHICLES} value={vehicleType} onChange={setVehicleType} disabled={busy} />
-            </div>
-            <label className="field">
-              <span>Make &amp; model</span>
-              <input value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} placeholder={vehicleType === 'car' ? 'e.g. Hyundai Creta 2022' : 'e.g. Honda Activa 2023'} disabled={busy} />
-            </label>
-          </div>
-        )}
-
-        <div className="field">
-          <span>Current policy</span>
-          <Chips options={SCRIPT_TYPES} value={insuranceStatus} onChange={setInsuranceStatus} disabled={busy} />
-          <p className="script-hint">
-            {settings.agentName} will follow the <b>{typeLabel} · {scriptLabel}</b> script{bulk ? ' on every call' : ''}: {settings.scripts[insuranceType][insuranceStatus].split('\n')[0].replace(/^Goal:\s*/i, '')}
-          </p>
-        </div>
 
         <div className="field">
           <span>When to call</span>

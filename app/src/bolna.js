@@ -1,15 +1,14 @@
+import { complianceBlock } from './compliance'
 import { Capacitor } from '@capacitor/core'
 
 const API_KEY = import.meta.env.VITE_BOLNA_API_KEY
 const FROM_NUMBER = import.meta.env.VITE_BOLNA_FROM_NUMBER
 const BASE = 'https://api.bolna.ai'
 
-// Hindi/Hinglish share one agent and English has a twin (ElevenLabs voice + Deepgram). Every regional language has its own
-// Sarvam-based agent, since the speech-to-text and voice language is fixed per agent.
 const MAIN_AGENT = import.meta.env.VITE_BOLNA_AGENT_ID
 const AGENTS = {
   hi: MAIN_AGENT,
-  en: '59d31f62-453d-4dfb-bdfc-efe7b4fd50fa', // same as main, but speech recognition set to English
+  en: '59d31f62-453d-4dfb-bdfc-efe7b4fd50fa', 
   hinglish: MAIN_AGENT,
   gu: import.meta.env.VITE_BOLNA_AGENT_ID_GU || '7697ce86-aba1-4ce9-85de-b082599dde49',
   mr: 'e2e08606-ef27-45f1-b8a9-93d58020fd0d',
@@ -38,11 +37,13 @@ async function request(path, options = {}) {
   return data
 }
 
-export function startCall({ phone, language, userData, scheduledAt }) {
+export function startCall({ language, phone, userData, scheduledAt }) {
+  const blocked = complianceBlock(phone, scheduledAt ? new Date(scheduledAt) : new Date())
+  if (blocked) return Promise.reject(new Error(blocked))
   return request('/call', {
     method: 'POST',
     body: JSON.stringify({
-      agent_id: AGENTS[language],
+      agent_id: AGENTS[language] || AGENTS.en,
       recipient_phone_number: phone,
       user_data: userData,
       ...(FROM_NUMBER && { from_phone_number: FROM_NUMBER }),
@@ -55,9 +56,8 @@ export function getExecution(executionId) {
   return request(`/executions/${executionId}`)
 }
 
-// All calls across every agent the app uses, newest first
 export async function listCalls() {
   const ids = [...new Set(Object.values(AGENTS))]
-  const pages = await Promise.all(ids.map((id) => request(`/v2/agent/${id}/executions?page_number=1&page_size=100`)))
+  const pages = await Promise.all(ids.map((id) => request(`/v2/agent/${id}/executions?page_number=1&page_size=100`).catch(() => ({}))))
   return pages.flatMap((p) => p.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { listCalls } from './bolna'
+import { getAgents } from './api'
 
 // `enabled` is off on the public landing page so visitors don't trigger Bolna API calls
 export default function useCalls(enabled = true) {
@@ -9,6 +10,7 @@ export default function useCalls(enabled = true) {
 
   const refresh = useCallback(async () => {
     try {
+      // Fetch calls for all Bolna language agents
       setCalls(await listCalls())
       setError('')
     } catch (err) {
