@@ -109,3 +109,7 @@ export const BedIcon = () => (
 export const CarIcon = () => (
   <svg {...base} width={18} height={18}><path d="M5 16V11l2-5h10l2 5v5M3 16h18v3H3z" /><circle cx="8" cy="13.5" r=".6" /><circle cx="16" cy="13.5" r=".6" /></svg>
 )
+
+export const LogoutIcon = () => (
+  <svg {...base} width={18} height={18}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5M21 12H9" /></svg>
+)

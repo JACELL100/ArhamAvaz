@@ -1,3 +1,4 @@
+import { complianceBlock } from './compliance'
 import { Capacitor } from '@capacitor/core'
 
 const API_KEY = import.meta.env.VITE_BOLNA_API_KEY
@@ -37,6 +38,8 @@ async function request(path, options = {}) {
 }
 
 export function startCall({ language, phone, userData, scheduledAt }) {
+  const blocked = complianceBlock(phone, scheduledAt ? new Date(scheduledAt) : new Date())
+  if (blocked) return Promise.reject(new Error(blocked))
   return request('/call', {
     method: 'POST',
     body: JSON.stringify({

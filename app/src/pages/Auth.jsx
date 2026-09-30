@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { login, signup } from '../api';
 import { UserIcon, MailIcon, LockIcon, EyeIcon, EyeOffIcon, ArrowIcon, PhoneIcon, SparkIcon, NetworkIcon } from '../components/icons';
-import { Brand, GoogleLogo, MicrosoftLogo } from '../components/OnboardingBits';
+import { Brand, SidePanel } from '../components/OnboardingBits';
 
 // Score 0-4: length, mixed case, number, symbol.
 function passwordScore(pw) {
@@ -39,17 +39,19 @@ export default function Auth({ onAuth }) {
 
   return (
     <div className="ob-page">
+      <SidePanel stage="signup" />
+      <div className="ob-main">
       <div className="ob-wrap">
         <Brand />
-        <h1 className="ob-hero">{isLogin ? 'Welcome back' : 'Build your AI voice agent'}</h1>
-        <p className="ob-sub">
+        <h1 className="ob-hero ob-mobile-only">{isLogin ? 'Welcome back' : 'Build your AI voice agent'}</h1>
+        <p className="ob-sub ob-mobile-only">
           {isLogin
             ? 'Log in to manage your agents, calls and responses.'
             : 'Create an AI voice agent that can answer calls, qualify leads, book appointments, and handle customer conversations automatically.'}
         </p>
 
         {!isLogin && (
-          <div className="ob-showcase">
+          <div className="ob-showcase ob-mobile-only">
             <div className="ob-wave" aria-hidden="true">
               {BARS.map((h, i) => <span key={i} style={{ height: h, opacity: i === 6 ? 0.45 : 1 }} />)}
             </div>
@@ -101,10 +103,6 @@ export default function Auth({ onAuth }) {
             {loading ? <span className="spinner" /> : <>{isLogin ? 'Log in' : 'Create account'} <ArrowIcon /></>}
           </button>
 
-          <div className="ob-or"><span>OR</span></div>
-          <button type="button" className="ob-btn ob-btn-alt" onClick={() => setError('Google sign-in is coming soon. Please use email for now.')}><GoogleLogo /> Continue with Google</button>
-          <button type="button" className="ob-btn ob-btn-alt" onClick={() => setError('Microsoft sign-in is coming soon. Please use email for now.')}><MicrosoftLogo /> Continue with Microsoft</button>
-
           <p className="ob-switch">
             {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
             <button type="button" onClick={() => { setIsLogin(!isLogin); setError(''); }} disabled={loading}>{isLogin ? 'Sign up' : 'Sign in'}</button>
@@ -112,6 +110,7 @@ export default function Auth({ onAuth }) {
         </form>
 
         {!isLogin && <p className="ob-legal">By continuing, you agree to our <a href="#terms">Terms of Service</a> and <a href="#privacy">Privacy Policy</a>.</p>}
+      </div>
       </div>
     </div>
   );

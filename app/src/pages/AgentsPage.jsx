@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { getAgents, createAgent, deleteAgent } from '../api';
 import { XIcon } from '../components/icons';
+import AgentSettings from '../components/AgentSettings';
 
-export default function AgentsPage() {
+export default function AgentsPage({ settings, onSaveSettings }) {
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -177,6 +178,7 @@ export default function AgentsPage() {
           ))}
         </div>
       )}
+      {settings && <AgentSettings settings={settings} onSave={onSaveSettings} />}
     </div>
   );
 }

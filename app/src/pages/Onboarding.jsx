@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { verifyEmail, resendOtp, saveBusiness, checkSlug, saveWorkspace } from '../api';
-import { TopBar, Footer } from '../components/OnboardingBits';
+import { TopBar, Footer, SidePanel } from '../components/OnboardingBits';
 import {
   MailIcon, ArrowIcon, CheckIcon, ClockIcon, BuildingIcon, CalendarIcon, HeadsetIcon, TrendIcon, RouteIcon,
   OutboundIcon, BellIcon, NetworkIcon, HeartIcon, HomeBuildingIcon, CoinIcon, CartIcon, BedIcon, CarIcon,
@@ -327,20 +327,27 @@ export default function Onboarding({ company, devCode, onUpdate }) {
   // "Back" on the workspace step returns to the business step without losing saved answers.
   if (stage === 'workspace' && reviewing) {
     return (
-      <div className="ob-page"><TopBar />
-        <BusinessStep company={company} onDone={(c) => { setReviewing(false); onUpdate(c); }} />
-        <Footer />
+      <div className="ob-page">
+        <SidePanel stage="business" />
+        <div className="ob-main">
+          <TopBar />
+          <BusinessStep company={company} onDone={(c) => { setReviewing(false); onUpdate(c); }} />
+          <Footer />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="ob-page">
+      <SidePanel stage={stage} />
+      <div className="ob-main">
       <TopBar onBack={back} />
       {stage === 'verify' && <VerifyStep company={company} devCode={devCode} onDone={onUpdate} />}
       {stage === 'business' && <BusinessStep company={company} onDone={onUpdate} />}
       {stage === 'workspace' && <WorkspaceStep company={company} onDone={onUpdate} />}
       <Footer />
+      </div>
     </div>
   );
 }

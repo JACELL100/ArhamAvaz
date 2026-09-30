@@ -1,6 +1,6 @@
 const BASE = 'http://localhost:3000/api';
 
-async function request(path, options = {}) {
+export async function request(path, options = {}) {
   const token = localStorage.getItem('arhamavaz_token');
   const headers = {
     'Content-Type': 'application/json',

@@ -1,4 +1,4 @@
-import { UserIcon, BackIcon } from './icons';
+import { UserIcon, BackIcon, CheckIcon, PhoneIcon, SparkIcon, NetworkIcon } from './icons';
 
 export function Brand() {
   return (
@@ -21,17 +21,42 @@ export function Footer() {
   return <p className="ob-foot">Enterprise-grade 256-bit SOC2 compliance</p>;
 }
 
-export const GoogleLogo = () => (
-  <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
-    <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
-    <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z" />
-    <path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z" />
-    <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z" />
-  </svg>
-);
+const STEPS = [
+  { id: 'signup', label: 'Create your account', hint: 'Name, email and password' },
+  { id: 'verify', label: 'Verify your email', hint: 'Enter the 6-digit code' },
+  { id: 'business', label: 'Your business', hint: 'Industry and use cases' },
+  { id: 'workspace', label: 'Create workspace', hint: 'Name, URL and team' },
+];
+const BARS = [10, 22, 34, 24, 40, 56, 36, 48, 26, 38, 20, 12, 8];
 
-export const MicrosoftLogo = () => (
-  <svg width="20" height="20" viewBox="0 0 21 21" aria-hidden="true">
-    <path fill="#F25022" d="M1 1h9v9H1z" /><path fill="#7FBA00" d="M11 1h9v9h-9z" /><path fill="#00A4EF" d="M1 11h9v9H1z" /><path fill="#FFB900" d="M11 11h9v9h-9z" />
-  </svg>
-);
+// Web-only branded column; hidden on phones and the Android app (see onboarding.css).
+export function SidePanel({ stage }) {
+  const at = STEPS.findIndex((s) => s.id === stage);
+  return (
+    <aside className="ob-side" aria-hidden="true">
+      <div className="ob-side-in">
+        <div className="ob-side-brand"><img src="/logo.jpg" alt="" /><span>ArhamAvaz</span></div>
+        <div className="ob-side-mid">
+          <h2>Build your AI voice agent in minutes</h2>
+          <p>Answer calls, qualify leads, book appointments and handle customer conversations automatically.</p>
+          <ol className="ob-track">
+            {STEPS.map((st, i) => (
+              <li key={st.id} className={i < at ? 'done' : i === at ? 'now' : ''}>
+                <span>{i < at ? <CheckIcon /> : i + 1}</span>
+                <div><b>{st.label}</b><small>{st.hint}</small></div>
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div className="ob-side-foot">
+          <div className="ob-wave">{BARS.map((h, i) => <span key={i} style={{ height: h * 0.8 }} />)}</div>
+          <div className="ob-side-pills">
+            <span><PhoneIcon /> Answer calls 24/7</span>
+            <span><SparkIcon /> Automate conversations</span>
+            <span><NetworkIcon /> Connect your tools</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}

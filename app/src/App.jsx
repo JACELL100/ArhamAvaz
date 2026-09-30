@@ -2,7 +2,6 @@ import { Capacitor } from '@capacitor/core'
 import { useEffect, useState } from 'react'
 import { HomeIcon, ListIcon, PhoneIcon, SettingsIcon, AgentIcon, WalletIcon } from './components/icons'
 import LandingPage from './components/landing/LandingPage'
-import { GlobeIcon } from './components/landing/LandingIcons'
 import BillingPage from './pages/BillingPage'
 import CallPage from './pages/CallPage'
 import Home from './pages/Home'
@@ -15,6 +14,7 @@ import './onboarding.css'
 import { loadSettings, saveSettings } from './settings'
 import useCalls from './useCalls'
 import { getMe } from './api'
+import { getCompliance } from './compliance'
 
 const TABS = [
   { id: 'home', label: 'Home', Icon: HomeIcon },
@@ -50,7 +50,7 @@ export default function App() {
   useEffect(() => {
     const token = localStorage.getItem('arhamavaz_token')
     if (token) {
-      getMe().then(res => setCompany(res.company)).catch(() => localStorage.removeItem('arhamavaz_token')).finally(() => setAuthLoading(false))
+      getMe().then(res => { setCompany(res.company); getCompliance().catch(() => {}) }).catch(() => localStorage.removeItem('arhamavaz_token')).finally(() => setAuthLoading(false))
     } else {
       setAuthLoading(false)
     }
@@ -107,7 +107,7 @@ export default function App() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand" style={{ cursor: 'pointer' }} onClick={() => go('landing')}>
+        <div className="brand">
           <img src="/logo.jpg" alt="" className="logo" />
           <div>
             <h1>ArhamAvaz</h1>
@@ -116,35 +116,17 @@ export default function App() {
         </div>
         <nav>
           {renderNav(TABS)}
-          <button
-            type="button"
-            className="nav-item"
-            style={{ marginTop: '12px', borderTop: '1px solid var(--line)', paddingTop: '14px' }}
-            onClick={() => go('landing')}
-          >
-            <GlobeIcon style={{ width: 18, height: 18 }} />
-            <span>Landing Page</span>
-          </button>
         </nav>
         <footer>Powered by Bolna</footer>
       </aside>
 
       <header className="mobile-top">
-        <img src="/logo.jpg" alt="" className="logo" onClick={() => go('landing')} style={{ cursor: 'pointer' }} />
-        <div className="mobile-title" onClick={() => go('landing')} style={{ cursor: 'pointer' }}>
+        <img src="/logo.jpg" alt="" className="logo" />
+        <div className="mobile-title">
           <h1>ArhamAvaz</h1>
           <p>{company.name}</p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            type="button"
-            className="top-settings"
-            aria-label="Website"
-            onClick={() => go('landing')}
-            title="Landing Page"
-          >
-            <GlobeIcon style={{ width: 18, height: 18 }} />
-          </button>
           <button
             type="button"
             className={`top-settings ${tab === 'billing' ? 'active' : ''}`}
@@ -170,27 +152,9 @@ export default function App() {
         {tab === 'responses' && (
           <Responses calls={calls} loading={loading} error={error} refresh={refresh} selectedId={selectedId} onSelect={setSelectedId} />
         )}
-        {tab === 'agents' && <AgentsPage />}
+        {tab === 'agents' && <AgentsPage settings={settings} onSaveSettings={updateSettings} />}
         {tab === 'billing' && <BillingPage settings={settings} />}
-        {tab === 'settings' && (
-          <div className="narrow" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div className="card form" style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.25rem', fontWeight: 800 }}>Account</h3>
-                <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>Logged in as {company.email}</div>
-              </div>
-              <button 
-                type="button" 
-                className="tone-bad" 
-                style={{ padding: '8px 16px', borderRadius: '99px', border: 'none', fontWeight: 700, cursor: 'pointer' }} 
-                onClick={() => { localStorage.removeItem('arhamavaz_token'); setCompany(null); }}
-              >
-                Log out
-              </button>
-            </div>
-            <SettingsPage settings={settings} onSave={updateSettings} />
-          </div>
-        )}
+        {tab === 'settings' && <SettingsPage company={company} onLogout={() => { localStorage.removeItem('arhamavaz_token'); setCompany(null) }} />}
       </main>
 
       <nav className="tabbar">{renderNav(TABBAR)}</nav>
