@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { verifyOtp, resendOtp, saveBusiness, checkSlug, saveWorkspace } from '../api';
+import { auth } from '../firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { TopBar, Footer, SidePanel } from '../components/OnboardingBits';
 import {
   MailIcon, ArrowIcon, CheckIcon, ClockIcon, BuildingIcon, CalendarIcon, HeadsetIcon, TrendIcon, RouteIcon,
@@ -51,9 +53,39 @@ function VerifyStep({ company, devCode, onDone }) {
   const [digits, setDigits] = useState(Array(OTP_LEN).fill(''));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [hint, setHint] = useState(devCode || '');
+  const [hint, setHint] = useState('');
   const [left, setLeft] = useCountdown(RESEND_SECONDS);
   const refs = useRef([]);
+
+  useEffect(() => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {
+          // reCAPTCHA solved
+        },
+      });
+    }
+
+    if (!window.confirmationResult) {
+      sendFirebaseOtp();
+    }
+  }, []);
+
+  async function sendFirebaseOtp() {
+    setError('');
+    setBusy(true);
+    try {
+      const formattedPhone = company.phone.startsWith('+') ? company.phone : '+91' + company.phone;
+      const appVerifier = window.recaptchaVerifier;
+      window.confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+      setLeft(RESEND_SECONDS);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const code = digits.join('');
 
@@ -92,7 +124,10 @@ function VerifyStep({ company, devCode, onDone }) {
     setBusy(true);
     setError('');
     try {
-      onDone((await verifyOtp(code)).company);
+      if (!window.confirmationResult) throw new Error('OTP not sent yet');
+      const result = await window.confirmationResult.confirm(code);
+      const firebaseToken = await result.user.getIdToken();
+      onDone((await verifyOtp(firebaseToken)).company);
     } catch (err) {
       setError(err.message);
       if (!/expired/i.test(err.message)) { setDigits(Array(OTP_LEN).fill('')); refs.current[0]?.focus(); }
@@ -102,16 +137,9 @@ function VerifyStep({ company, devCode, onDone }) {
   }
 
   async function resend() {
-    setError('');
-    try {
-      const r = await resendOtp();
-      setHint(r.devCode || '');
-      setDigits(Array(OTP_LEN).fill(''));
-      setLeft(RESEND_SECONDS);
-      refs.current[0]?.focus();
-    } catch (err) {
-      setError(err.message);
-    }
+    setDigits(Array(OTP_LEN).fill(''));
+    refs.current[0]?.focus();
+    await sendFirebaseOtp();
   }
 
   const mm = String(Math.floor(left / 60)).padStart(2, '0');
@@ -156,7 +184,7 @@ function VerifyStep({ company, devCode, onDone }) {
           <button type="button" disabled={left > 0} onClick={resend}>Resend code</button>
         </p>
         {left > 0 && <div className="ob-timer"><ClockIcon /> Resend available in <b>{mm}:{ss}</b></div>}
-        {hint && <p className="ob-devhint">Dev mode: no SMS provider connected. Your code is <b>{hint}</b>.</p>}
+        <div id="recaptcha-container"></div>
       </form>
 
       <p className="ob-secure"><ShieldIcon /> Your session is protected with secure mobile verification</p>

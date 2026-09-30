@@ -5,6 +5,12 @@ const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const admin = require('firebase-admin');
+const serviceAccount = require('./firebase-key.json');
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
 
 const app = express();
 app.use(cors());
@@ -217,14 +223,23 @@ app.post('/api/verify-otp', auth, async (req, res) => {
     if (!company) return res.status(404).json({ error: 'Company not found' });
     if (company.stage !== 'verify') return res.json({ company: publicCompany(company) });
 
-    if (!company.otphash || Date.now() > Number(company.otpexpires)) return res.status(400).json({ error: 'Code expired. Request a new one.', code: 'expired' });
-    if (company.otpattempts >= 5) return res.status(429).json({ error: 'Too many attempts. Request a new code.', code: 'expired' });
+    const firebaseToken = req.body.code;
+    if (!firebaseToken) return res.status(400).json({ error: 'Missing verification token' });
 
-    const ok = await bcrypt.compare(String(req.body.code || ''), company.otphash);
-    if (!ok) {
-      await dbRun('UPDATE companies SET otpAttempts = otpAttempts + 1 WHERE id = ?', [company.id]);
-      return res.status(400).json({ error: 'Invalid code. Please try again.', code: 'invalid' });
+    let decodedToken;
+    try {
+      decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid verification token' });
     }
+
+    const verifiedPhone = decodedToken.phone_number; // e.g. +919876543210
+    const companyPhone = company.phone.startsWith('+') ? company.phone : '+91' + company.phone;
+
+    if (verifiedPhone !== companyPhone) {
+      return res.status(400).json({ error: 'Verified phone number does not match registered number' });
+    }
+
     await dbRun("UPDATE companies SET stage = 'business', otpHash = NULL, otpExpires = NULL WHERE id = ?", [company.id]);
     res.json({ company: publicCompany(await dbGet('SELECT * FROM companies WHERE id = ?', [company.id])) });
   } catch (err) {
