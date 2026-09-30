@@ -1,4 +1,4 @@
-const BASE = 'http://localhost:3000/api';
+const BASE = 'https://api-134-209-149-189.nip.io/api';
 
 export async function request(path, options = {}) {
   const token = localStorage.getItem('arhamavaz_token');
