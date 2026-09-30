@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">ArhamAvaz</string>
-    <string name="title_activity_main">ArhamAvaz</string>
+    <string name="app_name">ArhamAawaaz</string>
+    <string name="title_activity_main">ArhamAawaaz</string>
     <string name="package_name">com.voiceagent.carinsurance</string>
     <string name="custom_url_scheme">com.voiceagent.carinsurance</string>
 </resources>

@@ -4,17 +4,17 @@ import { useLanding } from './LandingContext'
 export default function Overview() {
   const { go } = useLanding()
   return (
-    <section id="product">
+    <section id="workspace">
       <div className="lp-wrap">
         <div className="lp-head">
           <h2>Every call. <span className="lp-hl">One workspace.</span></h2>
           <p className="lp-sub">Call. Track. Review.</p>
         </div>
         <div className="lp-card lp-dash">
-          <div className="lp-dash-bar"><i></i><i></i><i></i><b>ArhamAvaz · Dashboard</b></div>
+          <div className="lp-dash-bar"><i></i><i></i><i></i><b>ArhamAawaaz · Dashboard</b></div>
           <div className="lp-dash-body">
             <aside className="lp-side">
-              <a href="#product" className="lp-on" onClick={(e) => go(e, 'product')}>Home</a><a href="#product"  onClick={(e) => go(e, 'product')}>Call</a><a href="#product"  onClick={(e) => go(e, 'product')}>Responses</a><a href="#product"  onClick={(e) => go(e, 'product')}>Settings</a>
+              <a href="#workspace" className="lp-on" onClick={(e) => go(e, 'workspace')}>Home</a><a href="#workspace"  onClick={(e) => go(e, 'workspace')}>Call</a><a href="#workspace"  onClick={(e) => go(e, 'workspace')}>Responses</a><a href="#workspace"  onClick={(e) => go(e, 'workspace')}>Settings</a>
             </aside>
             <div className="lp-main">
               <div className="lp-kpis">

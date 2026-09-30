@@ -139,7 +139,7 @@ async function payWithRazorpay(amount, { companyName, onDone }) {
       order_id: order.orderId,
       amount: order.amount,
       currency: order.currency,
-      name: companyName || 'ArhamAvaz',
+      name: companyName || 'ArhamAawaaz',
       description: 'Wallet top-up',
       theme: { color: '#4c9a1f' },
       handler: async (response) => {

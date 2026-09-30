@@ -13,6 +13,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/bolna/, ''),
       },
+      // Demo-booking API only allows its own origin via CORS, so dev requests go through this proxy.
+      '/demo-api': {
+        target: 'https://inbox.arhamworkspace.tech',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/demo-api/, '/api/public/demo'),
+      },
     },
   },
 })

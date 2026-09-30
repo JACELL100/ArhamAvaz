@@ -50,7 +50,7 @@ export default function VoiceTextarea({ value, onChange, lang, placeholder, disa
     if (native) {
       try {
         const perm = await NativeSpeech.requestPermissions()
-        if (perm.speechRecognition !== 'granted') return setError('Microphone access is off. Allow it for ArhamAvaz in your phone’s Settings → Apps → Permissions.')
+        if (perm.speechRecognition !== 'granted') return setError('Microphone access is off. Allow it for ArhamAawaaz in your phone’s Settings → Apps → Permissions.')
         await NativeSpeech.removeAllListeners()
         await NativeSpeech.addListener('partialResults', (d) => emit(d.matches?.[0] || ''))
         await NativeSpeech.addListener('listeningState', (d) => d.status === 'stopped' && setListening(false))

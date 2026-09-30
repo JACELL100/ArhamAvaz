@@ -1,27 +1,26 @@
 import '../../landing.css'
-import { useMemo } from 'react'
-import BulkCalling from './BulkCalling'
-import Control from './Control'
+import '../../landing2.css'
+import { useMemo, useState } from 'react'
+import BookDemoModal from './BookDemoModal'
+import Features from './Features'
+import ProductDemo from './ProductDemo'
 import FinalCTA from './FinalCTA'
 import Footer from './Footer'
 import Hero from './Hero'
 import HowItWorks from './HowItWorks'
-import Insights from './Insights'
 import Language from './Language'
 import { LandingContext } from './LandingContext'
 import Navbar from './Navbar'
 import Overview from './Overview'
-import Problem from './Problem'
-import Record from './Record'
-import Review from './Review'
-import Schedule from './Schedule'
-import ScriptDemo from './ScriptDemo'
 import UseCases from './UseCases'
 import { reducedMotion } from './motion'
 
 export default function LandingPage({ onLaunchApp }) {
+  const [isBookDemoOpen, setIsBookDemoOpen] = useState(false)
+
   const value = useMemo(() => ({
     launch: (tab) => onLaunchApp(tab),
+    openBookDemo: () => setIsBookDemoOpen(true),
     go: (e, id) => {
       e?.preventDefault()
       const behavior = reducedMotion() ? 'auto' : 'smooth'
@@ -36,22 +35,18 @@ export default function LandingPage({ onLaunchApp }) {
         <Navbar />
         <main>
           <Hero />
-          <Problem />
-          <Overview />
           <HowItWorks />
-          <Language />
-          <ScriptDemo />
-          <BulkCalling />
-          <Schedule />
-          <Review />
-          <Insights />
+          <Features />
+          <ProductDemo />
           <UseCases />
-          <Control />
-          <Record />
+          <Language />
+          <Overview />
           <FinalCTA />
         </main>
         <Footer />
+        <BookDemoModal isOpen={isBookDemoOpen} onClose={() => setIsBookDemoOpen(false)} />
       </div>
     </LandingContext.Provider>
   )
 }
+

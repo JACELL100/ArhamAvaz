@@ -1,6 +1,6 @@
 // Agent settings live on this device (localStorage) and are sent with every call as Bolna user_data,
 // so edits take effect on the next call without touching the Bolna agent.
-const KEY = 'arhamavaz.settings.v2'
+const KEY = 'arhamaawaaz.settings.v2'
 
 // `speech` is the BCP-47 code used for voice dictation in that language
 export const LANGUAGES = [

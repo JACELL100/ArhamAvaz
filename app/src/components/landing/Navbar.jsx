@@ -4,8 +4,9 @@ import { useLanding } from './LandingContext'
 const LINKS = [
   { id: 'product', label: 'Product' },
   { id: 'how', label: 'How It Works' },
+  { id: 'demo', label: 'Demo' },
   { id: 'usecases', label: 'Use Cases' },
-  { id: 'insights', label: 'Insights' },
+  { id: 'languages', label: 'Languages' },
 ]
 
 function LogoMark() {
@@ -17,7 +18,7 @@ function LogoMark() {
 }
 
 export default function Navbar() {
-  const { go, launch } = useLanding()
+  const { go, launch, openBookDemo } = useLanding()
   const [open, setOpen] = useState(false)
   const jump = (e, id) => {
     setOpen(false)
@@ -27,9 +28,9 @@ export default function Navbar() {
   return (
     <div className="lp-nav-shell">
       <header className="lp-nav" id="top">
-        <a className="lp-logo" href="#top" aria-label="ArhamAvaz home" onClick={(e) => go(e, 'top')}>
+        <a className="lp-logo" href="#top" aria-label="ArhamAawaaz home" onClick={(e) => go(e, 'top')}>
           <LogoMark />
-          ArhamAvaz
+          ArhamAawaaz
         </a>
         <ul>
           {LINKS.map((l) => (
@@ -37,7 +38,7 @@ export default function Navbar() {
           ))}
         </ul>
         <div className="lp-actions">
-          <a className="lp-btn lp-btn-ghost" href="#how" onClick={(e) => go(e, 'how')}>See Demo</a>
+          <button type="button" className="lp-btn lp-btn-ghost" onClick={openBookDemo}>Book Demo</button>
           <button type="button" className="lp-btn lp-btn-primary" onClick={() => launch('call')}>Start Calling</button>
         </div>
         <button type="button" className="lp-burger" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} aria-controls="lp-menu" onClick={() => setOpen(!open)}>
@@ -50,6 +51,7 @@ export default function Navbar() {
         {LINKS.map((l) => (
           <a key={l.id} href={`#${l.id}`} onClick={(e) => jump(e, l.id)}>{l.label}</a>
         ))}
+        <button type="button" className="lp-btn lp-btn-ghost" style={{ width: '100%', marginBottom: '8px' }} onClick={() => { setOpen(false); openBookDemo() }}>Book Demo</button>
         <button type="button" className="lp-btn lp-btn-primary" onClick={() => launch('call')}>Start Calling</button>
       </div>
     </div>

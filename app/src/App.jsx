@@ -87,7 +87,7 @@ export default function App() {
         <div className="brand" style={{ cursor: 'pointer' }} onClick={() => go('landing')}>
           <img src="/logo.jpg" alt="" className="logo" />
           <div>
-            <h1>ArhamAvaz</h1>
+            <h1>ArhamAawaaz</h1>
             <p>{settings.companyName} · AI calls</p>
           </div>
         </div>
@@ -109,7 +109,7 @@ export default function App() {
       <header className="mobile-top">
         <img src="/logo.jpg" alt="" className="logo" onClick={() => go('landing')} style={{ cursor: 'pointer' }} />
         <div className="mobile-title" onClick={() => go('landing')} style={{ cursor: 'pointer' }}>
-          <h1>ArhamAvaz</h1>
+          <h1>ArhamAawaaz</h1>
           <p>{settings.companyName || 'AI calls'}</p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
