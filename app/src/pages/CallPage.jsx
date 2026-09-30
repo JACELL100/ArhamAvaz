@@ -165,7 +165,7 @@ export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
       const selectedAgent = agents.find(a => a.id === agentId)
       if (!selectedAgent) throw new Error('Please select an agent first')
       const language = selectedAgent.language
-      const res = await startCall({ language, phone: number, userData: userDataFor({ name, language }, selectedAgent), scheduledAt })
+      const res = await startCall({ language, phone: number, userData: userDataFor({ name, language }, selectedAgent), scheduledAt, myAgentId: selectedAgent.id })
       if (scheduledAt) {
         setExecution({ status: 'scheduled', scheduledAt })
       } else {
@@ -245,7 +245,7 @@ export default function CallPage({ settings, onCallPlaced, onViewResponses }) {
       updateContact(c.id, { status: 'calling', error: null })
       const scheduledAt = start ? new Date(start.getTime() + i * Math.max(0, spacing) * 60000).toISOString() : undefined
       try {
-        const res = await startCall({ language: lang, phone: c.phone, userData: userDataFor({ name: c.name, language: lang }, selectedAgent), scheduledAt })
+        const res = await startCall({ language: lang, phone: c.phone, userData: userDataFor({ name: c.name, language: lang }, selectedAgent), scheduledAt, myAgentId: selectedAgent.id })
         updateContact(c.id, { status: scheduledAt ? 'scheduled' : res.status || 'queued', executionId: res.execution_id || null, scheduledAt })
       } catch (err) {
         updateContact(c.id, { status: 'pending', error: err.message })

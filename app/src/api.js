@@ -69,3 +69,10 @@ export function checkSlug(slug) {
 export function saveWorkspace(data) {
   return request('/onboarding/workspace', { method: 'POST', body: JSON.stringify(data) });
 }
+
+export function saveSettings(settings) {
+  return request('/settings', {
+    method: 'POST',
+    body: JSON.stringify(settings),
+  })
+}

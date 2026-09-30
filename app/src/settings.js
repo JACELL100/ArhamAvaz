@@ -134,27 +134,13 @@ export const DEFAULT_SETTINGS = {
 - If not interested or they ask not to be called, apologise, confirm they won't be called again, and end politely.`,
 }
 
-export function loadSettings() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY))
-    if (saved) {
-      const scripts = {}
-      for (const t of INSURANCE_TYPES) scripts[t.id] = { ...DEFAULT_SETTINGS.scripts[t.id], ...saved.scripts?.[t.id] }
-      return { ...DEFAULT_SETTINGS, ...saved, greetings: { ...DEFAULT_SETTINGS.greetings, ...saved.greetings }, scripts }
-    }
-  } catch {
-    // storage unavailable or corrupt; fall back to defaults
+export function mergeSettings(saved) {
+  if (saved) {
+    const scripts = {}
+    for (const t of INSURANCE_TYPES) scripts[t.id] = { ...DEFAULT_SETTINGS.scripts[t.id], ...saved.scripts?.[t.id] }
+    return { ...DEFAULT_SETTINGS, ...saved, greetings: { ...DEFAULT_SETTINGS.greetings, ...saved.greetings }, scripts }
   }
   return DEFAULT_SETTINGS
-}
-
-export function saveSettings(settings) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(settings))
-    return true
-  } catch {
-    return false
-  }
 }
 
 const INSURANCE_WORDS = {

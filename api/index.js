@@ -125,6 +125,19 @@ async function initDb() {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS calls (
+        id TEXT PRIMARY KEY,
+        companyId TEXT NOT NULL,
+        agentId TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        customerName TEXT,
+        status TEXT,
+        createdAt BIGINT,
+        scheduledAt BIGINT
+      )
+    `);
+
     // Migrations
     const columns = [
       "ALTER TABLE companies RENAME COLUMN email TO phone",
@@ -141,6 +154,8 @@ async function initDb() {
       'ALTER TABLE companies ADD COLUMN workspaceIcon TEXT',
       'ALTER TABLE companies ADD COLUMN teamSize TEXT',
       'ALTER TABLE companies ADD COLUMN compliance TEXT',
+      'ALTER TABLE companies ADD COLUMN settings TEXT',
+      'ALTER TABLE calls ADD COLUMN bolnaData TEXT',
     ];
 
     for (const sql of columns) {
@@ -168,6 +183,7 @@ const publicCompany = (c) => ({
   industry: c.industry, useCases: c.useCases ? JSON.parse(c.usecases || c.useCases || '[]') : [],
   workspaceName: c.workspacename || c.workspaceName, workspaceSlug: c.workspaceslug || c.workspaceSlug,
   workspaceIcon: c.workspaceicon || c.workspaceIcon, teamSize: c.teamsize || c.teamSize,
+  settings: c.settings ? JSON.parse(c.settings) : undefined,
 });
 
 async function issueOtp(company) {
@@ -363,6 +379,16 @@ app.get('/api/me', auth, async (req, res) => {
     if (!company) return res.status(404).json({ error: 'Company not found' });
     res.json({ company: publicCompany(company) });
   } catch(err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/settings', auth, async (req, res) => {
+  try {
+    const settingsStr = JSON.stringify(req.body);
+    await dbRun('UPDATE companies SET settings = ? WHERE id = ?', [settingsStr, req.companyId]);
+    res.json({ success: true });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -606,6 +632,144 @@ app.post('/api/razorpay/webhook', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// --- Bolna / Calls ---
+const BOLNA_API_KEY = process.env.BOLNA_API_KEY;
+const BOLNA_FROM_NUMBER = process.env.BOLNA_FROM_NUMBER;
+const BOLNA_AGENT_ID = process.env.BOLNA_AGENT_ID;
+
+const AGENTS = {
+  hi: BOLNA_AGENT_ID,
+  en: '59d31f62-453d-4dfb-bdfc-efe7b4fd50fa', 
+  hinglish: BOLNA_AGENT_ID,
+  gu: process.env.BOLNA_AGENT_ID_GU || '7697ce86-aba1-4ce9-85de-b082599dde49',
+  mr: 'e2e08606-ef27-45f1-b8a9-93d58020fd0d',
+  ta: '1259a5fc-7706-40ba-933c-0f63beb99531',
+  te: 'cd9cfd4e-bf82-449c-85da-8b64127d43d9',
+  kn: '25bbefac-6539-4fc7-a949-6651ae91f5cb',
+  ml: 'b8d95b1b-b4e8-4f52-906c-2ec733a589ec',
+  bn: '407ab6f4-2399-48ec-b56e-46f4c8e2800f',
+  pa: '8735b059-49be-4c27-b0be-031a082d3c22',
+  od: '8abf1d2e-ed3b-4931-b209-9644bb8babb6',
+};
+
+async function requestBolna(path, options = {}) {
+  const res = await fetch(`https://api.bolna.ai${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${BOLNA_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = data.message || data.detail || data.error;
+    throw new Error(typeof detail === 'string' ? detail : \`Request failed (\${res.status})\`);
+  }
+  return data;
+}
+
+app.post('/api/calls/start', auth, async (req, res) => {
+  try {
+    const { language, phone, userData, scheduledAt, myAgentId } = req.body;
+    
+    const bolnaAgentId = AGENTS[language] || AGENTS.en;
+    
+    const response = await requestBolna('/call', {
+      method: 'POST',
+      body: JSON.stringify({
+        agent_id: bolnaAgentId,
+        recipient_phone_number: phone,
+        user_data: userData,
+        ...(BOLNA_FROM_NUMBER && { from_phone_number: BOLNA_FROM_NUMBER }),
+        ...(scheduledAt && { scheduled_at: scheduledAt }),
+      }),
+    });
+    
+    const executionId = response.execution_id || ('sched_' + Date.now());
+    
+    await dbRun(
+      'INSERT INTO calls (id, companyId, agentId, phone, customerName, status, createdAt, scheduledAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [executionId, req.companyId, myAgentId || '', phone, userData?.customer_name || '', scheduledAt ? 'scheduled' : 'queued', Date.now(), scheduledAt ? new Date(scheduledAt).getTime() : null]
+    );
+    
+    res.json(response);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/calls', auth, async (req, res) => {
+  try {
+    const calls = await dbAll('SELECT * FROM calls WHERE companyId = ? ORDER BY createdAt DESC LIMIT 100', [req.companyId]);
+    
+    // Background refresh for active calls, but don't block the response
+    const activeCalls = calls.filter(c => !c.id.startsWith('sched_') && !['completed', 'failed', 'call-disconnected', 'no-answer', 'busy', 'canceled', 'error'].includes(c.status));
+    
+    // Return immediately with what we have in DB
+    const results = calls.map(c => {
+      let bolnaData = {};
+      if (c.bolnadata) {
+        try { bolnaData = JSON.parse(c.bolnadata); } catch(e) {}
+      }
+      return {
+        ...bolnaData, // Spread bolnaData so frontend gets transcript, duration, etc.
+        id: c.id, // Ensure our executionId takes precedence
+        companyId: c.companyid,
+        agentId: c.agentid,
+        customerName: c.customername,
+        created_at: bolnaData.created_at || new Date(Number(c.createdat)).toISOString(),
+        status: c.status,
+        scheduledAt: c.scheduledat,
+        recipient_phone_number: c.phone
+      };
+    });
+    
+    res.json(results);
+
+    // Refresh active calls in background
+    for (const call of activeCalls) {
+      try {
+        const bolnaData = await requestBolna(`/executions/${call.id}`);
+        if (bolnaData && bolnaData.status) {
+          await dbRun('UPDATE calls SET status = ?, bolnaData = ? WHERE id = ?', [bolnaData.status, JSON.stringify(bolnaData), call.id]);
+        }
+      } catch (e) {
+        console.error('Bolna background refresh error', e.message);
+      }
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/calls/:id', auth, async (req, res) => {
+  try {
+    const call = await dbGet('SELECT * FROM calls WHERE id = ? AND companyId = ?', [req.params.id, req.companyId]);
+    if (!call) return res.status(404).json({ error: 'Call not found' });
+    
+    if (!call.id.startsWith('sched_')) {
+      try {
+        const bolnaData = await requestBolna(\`/executions/\${call.id}\`);
+        if (bolnaData && bolnaData.status && bolnaData.status !== call.status) {
+          await dbRun('UPDATE calls SET status = ? WHERE id = ?', [bolnaData.status, call.id]);
+          bolnaData.id = call.id;
+          return res.json(bolnaData);
+        }
+        return res.json(bolnaData);
+      } catch (e) {}
+    }
+    
+    let bolnaData = {};
+    if (call.bolnadata) {
+      try { bolnaData = JSON.parse(call.bolnadata); } catch(e) {}
+    }
+    
+    res.json({ id: call.id, status: call.status, created_at: bolnaData.created_at || new Date(Number(call.createdat)).toISOString(), ...bolnaData });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
