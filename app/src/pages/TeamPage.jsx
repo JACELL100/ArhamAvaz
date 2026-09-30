@@ -173,8 +173,8 @@ export default function TeamPage() {
             </select>
           </div>
 
-          <button type="submit" className="lp-btn lp-btn-primary lp-team-submit-btn">
-            Add member
+          <button type="submit" className="lp-team-submit-btn">
+            + Add member
           </button>
         </form>
 
