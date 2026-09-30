@@ -17,17 +17,17 @@ export async function request(path, options = {}) {
   return data;
 }
 
-export function signup(name, phone, password) {
+export function signup(name, email, phone, password) {
   return request('/signup', {
     method: 'POST',
-    body: JSON.stringify({ name, phone, password }),
+    body: JSON.stringify({ name, email, phone, password }),
   });
 }
 
-export function login(phone, password) {
+export function login(identifier, password) {
   return request('/login', {
     method: 'POST',
-    body: JSON.stringify({ phone, password }),
+    body: JSON.stringify({ identifier, password }),
   });
 }
 

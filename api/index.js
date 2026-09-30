@@ -91,6 +91,7 @@ async function initDb() {
     // Migrations
     const columns = [
       "ALTER TABLE companies RENAME COLUMN email TO phone",
+      "ALTER TABLE companies ADD COLUMN email TEXT UNIQUE",
       "ALTER TABLE companies ADD COLUMN stage TEXT NOT NULL DEFAULT 'done'",
       'ALTER TABLE companies ADD COLUMN otpHash TEXT',
       'ALTER TABLE companies ADD COLUMN otpExpires BIGINT',
@@ -126,7 +127,7 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const generateOtp = () => String(crypto.randomInt(0, 1000000)).padStart(6, '0');
 const publicCompany = (c) => ({
-  id: c.id, name: c.name, phone: c.phone, stage: c.stage,
+  id: c.id, name: c.name, email: c.email, phone: c.phone, stage: c.stage,
   industry: c.industry, useCases: c.useCases ? JSON.parse(c.usecases || c.useCases || '[]') : [],
   workspaceName: c.workspacename || c.workspaceName, workspaceSlug: c.workspaceslug || c.workspaceSlug,
   workspaceIcon: c.workspaceicon || c.workspaceIcon, teamSize: c.teamsize || c.teamSize,
@@ -197,17 +198,17 @@ const auth = (req, res, next) => {
 
 app.post('/api/signup', async (req, res) => {
   try {
-    const { name, phone, password } = req.body;
-    if (!name?.trim() || !phone?.trim() || !password) return res.status(400).json({ error: 'Name, mobile and password are required' });
+    const { name, email, phone, password } = req.body;
+    if (!name?.trim() || !email?.trim() || !phone?.trim() || !password) return res.status(400).json({ error: 'Name, email, mobile and password are required' });
     if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
-    const existing = await dbGet('SELECT id FROM companies WHERE phone = ?', [phone.trim()]);
-    if (existing) return res.status(400).json({ error: 'Mobile number already exists' });
+    const existing = await dbGet('SELECT id FROM companies WHERE phone = ? OR email = ?', [phone.trim(), email.trim().toLowerCase()]);
+    if (existing) return res.status(400).json({ error: 'Mobile number or email already exists' });
 
     const id = generateId();
     const hashedPassword = await bcrypt.hash(password, 10);
-    await dbRun("INSERT INTO companies (id, name, phone, password, stage) VALUES (?, ?, ?, ?, 'verify')",
-      [id, name.trim(), phone.trim(), hashedPassword]);
+    await dbRun("INSERT INTO companies (id, name, email, phone, password, stage) VALUES (?, ?, ?, ?, ?, 'verify')",
+      [id, name.trim(), email.trim().toLowerCase(), phone.trim(), hashedPassword]);
     const company = await dbGet('SELECT * FROM companies WHERE id = ?', [id]);
     const extra = await issueOtp(company);
     const token = jwt.sign({ companyId: id }, JWT_SECRET, { expiresIn: '7d' });
@@ -304,9 +305,10 @@ app.post('/api/onboarding/workspace', auth, async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   try {
-    const { phone, password } = req.body;
-    const company = await dbGet('SELECT * FROM companies WHERE phone = ?', [String(phone || '').trim()]);
-    if (!company) return res.status(401).json({ error: 'Invalid mobile or password' });
+    const { identifier, phone, password } = req.body;
+    const ident = String(identifier || phone || '').trim().toLowerCase();
+    const company = await dbGet('SELECT * FROM companies WHERE phone = ? OR email = ?', [ident, ident]);
+    if (!company) return res.status(401).json({ error: 'Invalid credentials' });
 
     const valid = await bcrypt.compare(password, company.password);
     if (!valid) return res.status(401).json({ error: 'Invalid mobile or password' });
