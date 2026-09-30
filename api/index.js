@@ -5,11 +5,12 @@ const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
 const serviceAccount = require('./firebase-key.json');
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+initializeApp({
+  credential: cert(serviceAccount)
 });
 
 const app = express();
@@ -229,7 +230,7 @@ app.post('/api/verify-otp', auth, async (req, res) => {
 
     let decodedToken;
     try {
-      decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+      decodedToken = await getAuth().verifyIdToken(firebaseToken);
     } catch (err) {
       return res.status(401).json({ error: 'Invalid verification token' });
     }
