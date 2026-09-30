@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 import { useEffect, useState } from 'react'
-import { AgentIcon, HomeIcon, ListIcon, PhoneIcon, SettingsIcon, WalletIcon } from './components/icons'
+import { AgentIcon, HomeIcon, ListIcon, PhoneIcon, SettingsIcon, TeamIcon, WalletIcon } from './components/icons'
 import LandingPage from './components/landing/LandingPage'
 import BillingPage from './pages/BillingPage'
 import CallPage from './pages/CallPage'
@@ -9,6 +9,7 @@ import Responses from './pages/Responses'
 import SettingsPage from './pages/SettingsPage'
 import Auth from './pages/Auth'
 import AgentsPage from './pages/AgentsPage'
+import TeamPage from './pages/TeamPage'
 import Onboarding from './pages/Onboarding'
 import './onboarding.css'
 import { loadSettings, saveSettings } from './settings'
@@ -22,10 +23,12 @@ const TABS = [
   { id: 'responses', label: 'Responses', Icon: ListIcon },
   { id: 'agents', label: 'Agents', Icon: AgentIcon },
   { id: 'billing', label: 'Billing', Icon: WalletIcon },
+  { id: 'team', label: 'Team', Icon: TeamIcon },
   { id: 'settings', label: 'Settings', Icon: SettingsIcon },
 ]
-// Mobile: "Billing" and "Settings" live in the top header, so the bottom tab bar only shows the rest.
-const TABBAR = TABS.filter((t) => t.id !== 'settings' && t.id !== 'billing')
+// Mobile: "Billing", "Team" and "Settings" live in the top header, so the bottom tab bar only shows the rest.
+const TABBAR = TABS.filter((t) => t.id !== 'settings' && t.id !== 'billing' && t.id !== 'team')
+
 
 export default function App() {
   const [tab, setTab] = useState(() => {
@@ -137,6 +140,14 @@ export default function App() {
           </button>
           <button
             type="button"
+            className={`top-settings ${tab === 'team' ? 'active' : ''}`}
+            aria-label="Team"
+            onClick={() => go('team')}
+          >
+            <TeamIcon />
+          </button>
+          <button
+            type="button"
             className={`top-settings ${tab === 'settings' ? 'active' : ''}`}
             aria-label="Settings"
             onClick={() => go('settings')}
@@ -154,6 +165,7 @@ export default function App() {
         )}
         {tab === 'agents' && <AgentsPage settings={settings} onSaveSettings={updateSettings} />}
         {tab === 'billing' && <BillingPage settings={settings} />}
+        {tab === 'team' && <TeamPage />}
         {tab === 'settings' && <SettingsPage company={company} onLogout={() => { localStorage.removeItem('arhamavaz_token'); setCompany(null) }} />}
       </main>
 

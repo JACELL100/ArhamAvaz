@@ -2,7 +2,7 @@ import { UserIcon, BackIcon, CheckIcon, PhoneIcon, SparkIcon, NetworkIcon } from
 
 export function Brand() {
   return (
-    <div className="ob-brand"><img src="/logo.jpg" alt="" /><span>ArhamAvaz</span></div>
+    <div className="ob-brand"><img src="/logo.jpg" alt="" /><span>ArhamAawaaz</span></div>
   );
 }
 
@@ -11,7 +11,7 @@ export function TopBar({ onBack }) {
   return (
     <header className="ob-top">
       {onBack ? <button type="button" className="ob-back" aria-label="Back" onClick={onBack}><BackIcon /></button> : <span className="ob-back-gap" />}
-      <div className="ob-brand"><img src="/logo.jpg" alt="" /><span>ArhamAvaz</span></div>
+      <div className="ob-brand"><img src="/logo.jpg" alt="" /><span>ArhamAawaaz</span></div>
       <span className="ob-avatar" aria-hidden="true"><UserIcon /></span>
     </header>
   );
@@ -22,7 +22,7 @@ export function Footer() {
 }
 
 const STEPS = [
-  { id: 'signup', label: 'Create your account', hint: 'Name, email and password' },
+  { id: 'signup', label: 'Create your account', hint: 'Name, email, mobile and password' },
   { id: 'verify', label: 'Verify your email', hint: 'Enter the 6-digit code' },
   { id: 'business', label: 'Your business', hint: 'Industry and use cases' },
   { id: 'workspace', label: 'Create workspace', hint: 'Name, URL and team' },
@@ -35,7 +35,7 @@ export function SidePanel({ stage }) {
   return (
     <aside className="ob-side" aria-hidden="true">
       <div className="ob-side-in">
-        <div className="ob-side-brand"><img src="/logo.jpg" alt="" /><span>ArhamAvaz</span></div>
+        <div className="ob-side-brand"><img src="/logo.jpg" alt="" /><span>ArhamAawaaz</span></div>
         <div className="ob-side-mid">
           <h2>Build your AI voice agent in minutes</h2>
           <p>Answer calls, qualify leads, book appointments and handle customer conversations automatically.</p>

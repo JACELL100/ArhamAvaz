@@ -13,6 +13,7 @@ const BARS = Array.from({ length: 13 }, (_, i) => [10, 22, 34, 24, 40, 56, 36, 4
 export default function Auth({ onAuth }) {
   const [isLogin, setIsLogin] = useState(false);
   const [name, setName] = useState('');
+  const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -27,7 +28,7 @@ export default function Auth({ onAuth }) {
     setError('');
     setLoading(true);
     try {
-      const data = isLogin ? await login(email, password) : await signup(name, email, password);
+      const data = isLogin ? await login(email, password) : await signup(name, email, password, mobile);
       localStorage.setItem('arhamavaz_token', data.token);
       onAuth(data.company, data.devCode);
     } catch (err) {
@@ -66,10 +67,16 @@ export default function Auth({ onAuth }) {
           <p className="ob-card-sub">{isLogin ? 'Enter your work email and password.' : 'Start deploying enterprise voice agents in minutes.'}</p>
 
           {!isLogin && (
-            <label className="ob-field">
-              <span>Full name</span>
-              <div className="ob-input"><UserIcon /><input type="text" required placeholder="Alex Morgan" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} disabled={loading} /></div>
-            </label>
+            <>
+              <label className="ob-field">
+                <span>Full name</span>
+                <div className="ob-input"><UserIcon /><input type="text" required placeholder="Alex Morgan" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} disabled={loading} /></div>
+              </label>
+              <label className="ob-field">
+                <span>Mobile number</span>
+                <div className="ob-input"><PhoneIcon /><input type="tel" required placeholder="+91 98765 43210" autoComplete="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} disabled={loading} /></div>
+              </label>
+            </>
           )}
           <label className="ob-field">
             <span>Work email</span>

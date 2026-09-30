@@ -1725,3 +1725,259 @@
   background: rgba(56, 189, 248, 0.16);
   border: 1px solid rgba(56, 189, 248, 0.3);
 }
+
+/* ==================================================
+   TEAM MANAGEMENT (ARHAM CONSOLE STYLE)
+   ================================================== */
+.lp-team-container {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.lp-team-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: #10B981;
+  color: #ffffff;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
+  animation: lp-fade-in-down 0.25s ease-out;
+}
+
+@keyframes lp-fade-in-down {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lp-team-header h1 {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0 0 6px;
+}
+
+.lp-team-header p {
+  font-size: 14px;
+  color: #64748B;
+  margin: 0;
+}
+
+.lp-team-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.lp-team-card h3 {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0;
+}
+
+.lp-team-error {
+  background: #FEE2E2;
+  border: 1px solid #FCA5A5;
+  color: #991B1B;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.lp-team-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 0.8fr auto;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.lp-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lp-form-field label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748B;
+}
+
+.lp-team-input, .lp-team-select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid #CBD5E1;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: #0F172A;
+  background: #F8FAFC;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.lp-team-input:focus, .lp-team-select:focus {
+  outline: none;
+  border-color: #2563EB;
+  background: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.lp-team-submit-btn {
+  padding: 11px 22px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* ROLE LEGEND */
+.lp-role-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #F1F5F9;
+}
+
+.lp-role-item {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 16px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.lp-role-title {
+  font-weight: 700;
+  color: #1E293B;
+}
+
+.lp-role-desc {
+  color: #64748B;
+}
+
+/* MEMBER LIST */
+.lp-member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lp-member-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: #F8FAFC;
+  border: 1px solid #F1F5F9;
+  border-radius: 14px;
+}
+
+.lp-member-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lp-member-email {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.lp-member-sub {
+  font-size: 12.5px;
+  color: #64748B;
+}
+
+.lp-member-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lp-badge-full-access {
+  display: inline-flex;
+  padding: 5px 12px;
+  border-radius: 99px;
+  background: #EFF6FF;
+  color: #2563EB;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lp-badge-role {
+  display: inline-flex;
+  padding: 5px 12px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.badge-coowner {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.badge-admin {
+  background: #F3E8FF;
+  color: #6B21A8;
+}
+
+.badge-useradmin {
+  background: #E0E7FF;
+  color: #3730A3;
+}
+
+.lp-team-remove-btn {
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid #FCA5A5;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.lp-team-remove-btn:hover {
+  background: #FCA5A5;
+  color: #7F1D1D;
+}
+
+@media (max-width: 860px) {
+  .lp-team-form {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .lp-role-item {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .lp-member-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .lp-member-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+

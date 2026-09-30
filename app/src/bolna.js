@@ -21,20 +21,34 @@ const AGENTS = {
   od: '8abf1d2e-ed3b-4931-b209-9644bb8babb6',
 }
 
+let hasAuthError = false
+
 async function request(path, options = {}) {
-  const res = await fetch(`${BASE}${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    const detail = data.message || data.detail || data.error
-    throw new Error(typeof detail === 'string' ? detail : `Request failed (${res.status})`)
+  if (!API_KEY || hasAuthError) {
+    return {}
   }
-  return data
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    })
+    if (res.status === 401 || res.status === 403) {
+      hasAuthError = true
+      return {}
+    }
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const detail = data.message || data.detail || data.error
+      throw new Error(typeof detail === 'string' ? detail : `Request failed (${res.status})`)
+    }
+    return data
+  } catch (err) {
+    if (hasAuthError) return {}
+    throw err
+  }
 }
 
 export function startCall({ language, phone, userData, scheduledAt }) {
@@ -57,7 +71,8 @@ export function getExecution(executionId) {
 }
 
 export async function listCalls() {
-  const ids = [...new Set(Object.values(AGENTS))]
+  if (!API_KEY || hasAuthError) return []
+  const ids = [...new Set(Object.values(AGENTS).filter(Boolean))]
   const pages = await Promise.all(ids.map((id) => request(`/v2/agent/${id}/executions?page_number=1&page_size=100`).catch(() => ({}))))
   return pages.flatMap((p) => p.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 }

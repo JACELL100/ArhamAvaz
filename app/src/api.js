@@ -17,10 +17,10 @@ export async function request(path, options = {}) {
   return data;
 }
 
-export function signup(name, email, password) {
+export function signup(name, email, password, mobile) {
   return request('/signup', {
     method: 'POST',
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, email, password, mobile }),
   });
 }
 
