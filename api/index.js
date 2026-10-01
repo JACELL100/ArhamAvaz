@@ -5,10 +5,21 @@ const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const serviceAccount = require('./firebase-key.json');
+
+initializeApp({
+  credential: cert(serviceAccount)
+});
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'arhamavaz-super-secret-key-2024';
 
@@ -82,8 +93,55 @@ async function initDb() {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallets (
+        companyId TEXT PRIMARY KEY,
+        balance INT DEFAULT 0,
+        balanceUsd INT DEFAULT 0,
+        updatedAt BIGINT
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS wallet_transactions (
+        id TEXT PRIMARY KEY,
+        companyId TEXT,
+        amount INT,
+        currency TEXT,
+        gateway TEXT,
+        description TEXT,
+        status TEXT,
+        createdAt BIGINT
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id TEXT PRIMARY KEY,
+        companyId TEXT,
+        gateway TEXT,
+        amount INT,
+        createdAt BIGINT
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS calls (
+        id TEXT PRIMARY KEY,
+        companyId TEXT NOT NULL,
+        agentId TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        customerName TEXT,
+        status TEXT,
+        createdAt BIGINT,
+        scheduledAt BIGINT
+      )
+    `);
+
     // Migrations
     const columns = [
+      "ALTER TABLE companies RENAME COLUMN email TO phone",
+      "ALTER TABLE companies ADD COLUMN email TEXT UNIQUE",
       "ALTER TABLE companies ADD COLUMN stage TEXT NOT NULL DEFAULT 'done'",
       'ALTER TABLE companies ADD COLUMN otpHash TEXT',
       'ALTER TABLE companies ADD COLUMN otpExpires BIGINT',
@@ -96,6 +154,8 @@ async function initDb() {
       'ALTER TABLE companies ADD COLUMN workspaceIcon TEXT',
       'ALTER TABLE companies ADD COLUMN teamSize TEXT',
       'ALTER TABLE companies ADD COLUMN compliance TEXT',
+      'ALTER TABLE companies ADD COLUMN settings TEXT',
+      'ALTER TABLE calls ADD COLUMN bolnaData TEXT',
     ];
 
     for (const sql of columns) {
@@ -119,17 +179,18 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const generateOtp = () => String(crypto.randomInt(0, 1000000)).padStart(6, '0');
 const publicCompany = (c) => ({
-  id: c.id, name: c.name, email: c.email, stage: c.stage,
+  id: c.id, name: c.name, email: c.email, phone: c.phone, stage: c.stage,
   industry: c.industry, useCases: c.useCases ? JSON.parse(c.usecases || c.useCases || '[]') : [],
   workspaceName: c.workspacename || c.workspaceName, workspaceSlug: c.workspaceslug || c.workspaceSlug,
   workspaceIcon: c.workspaceicon || c.workspaceIcon, teamSize: c.teamsize || c.teamSize,
+  settings: c.settings ? JSON.parse(c.settings) : undefined,
 });
 
 async function issueOtp(company) {
   const code = generateOtp();
   await dbRun('UPDATE companies SET otpHash = ?, otpExpires = ?, otpSentAt = ?, otpAttempts = 0 WHERE id = ?',
     [await bcrypt.hash(code, 8), Date.now() + OTP_TTL_MS, Date.now(), company.id]);
-  console.log(`[otp] ${company.email}: ${code}`);
+  console.log(`[otp] ${company.phone}: ${code}`);
   return isProd ? {} : { devCode: code };
 }
 
@@ -190,17 +251,17 @@ const auth = (req, res, next) => {
 
 app.post('/api/signup', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    if (!name?.trim() || !email?.trim() || !password) return res.status(400).json({ error: 'Name, email and password are required' });
+    const { name, email, phone, password } = req.body;
+    if (!name?.trim() || !email?.trim() || !phone?.trim() || !password) return res.status(400).json({ error: 'Name, email, mobile and password are required' });
     if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
-    const existing = await dbGet('SELECT id FROM companies WHERE email = ?', [email.trim().toLowerCase()]);
-    if (existing) return res.status(400).json({ error: 'Email already exists' });
+    const existing = await dbGet('SELECT id FROM companies WHERE phone = ? OR email = ?', [phone.trim(), email.trim().toLowerCase()]);
+    if (existing) return res.status(400).json({ error: 'Mobile number or email already exists' });
 
     const id = generateId();
     const hashedPassword = await bcrypt.hash(password, 10);
-    await dbRun("INSERT INTO companies (id, name, email, password, stage) VALUES (?, ?, ?, ?, 'verify')",
-      [id, name.trim(), email.trim().toLowerCase(), hashedPassword]);
+    await dbRun("INSERT INTO companies (id, name, email, phone, password, stage) VALUES (?, ?, ?, ?, ?, 'verify')",
+      [id, name.trim(), email.trim().toLowerCase(), phone.trim(), hashedPassword]);
     const company = await dbGet('SELECT * FROM companies WHERE id = ?', [id]);
     const extra = await issueOtp(company);
     const token = jwt.sign({ companyId: id }, JWT_SECRET, { expiresIn: '7d' });
@@ -210,20 +271,29 @@ app.post('/api/signup', async (req, res) => {
   }
 });
 
-app.post('/api/verify-email', auth, async (req, res) => {
+app.post('/api/verify-otp', auth, async (req, res) => {
   try {
     const company = await dbGet('SELECT * FROM companies WHERE id = ?', [req.companyId]);
     if (!company) return res.status(404).json({ error: 'Company not found' });
     if (company.stage !== 'verify') return res.json({ company: publicCompany(company) });
 
-    if (!company.otphash || Date.now() > Number(company.otpexpires)) return res.status(400).json({ error: 'Code expired. Request a new one.', code: 'expired' });
-    if (company.otpattempts >= 5) return res.status(429).json({ error: 'Too many attempts. Request a new code.', code: 'expired' });
+    const firebaseToken = req.body.code;
+    if (!firebaseToken) return res.status(400).json({ error: 'Missing verification token' });
 
-    const ok = await bcrypt.compare(String(req.body.code || ''), company.otphash);
-    if (!ok) {
-      await dbRun('UPDATE companies SET otpAttempts = otpAttempts + 1 WHERE id = ?', [company.id]);
-      return res.status(400).json({ error: 'Invalid code. Please try again.', code: 'invalid' });
+    let decodedToken;
+    try {
+      decodedToken = await getAuth().verifyIdToken(firebaseToken);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid verification token' });
     }
+
+    const verifiedPhone = decodedToken.phone_number; // e.g. +919876543210
+    const companyPhone = company.phone.startsWith('+') ? company.phone : '+91' + company.phone;
+
+    if (verifiedPhone !== companyPhone) {
+      return res.status(400).json({ error: 'Verified phone number does not match registered number' });
+    }
+
     await dbRun("UPDATE companies SET stage = 'business', otpHash = NULL, otpExpires = NULL WHERE id = ?", [company.id]);
     res.json({ company: publicCompany(await dbGet('SELECT * FROM companies WHERE id = ?', [company.id])) });
   } catch (err) {
@@ -234,7 +304,7 @@ app.post('/api/verify-email', auth, async (req, res) => {
 app.post('/api/resend-otp', auth, async (req, res) => {
   try {
     const company = await dbGet('SELECT * FROM companies WHERE id = ?', [req.companyId]);
-    if (!company || company.stage !== 'verify') return res.status(400).json({ error: 'Email already verified' });
+    if (!company || company.stage !== 'verify') return res.status(400).json({ error: 'Mobile already verified' });
     const wait = (Number(company.otpsentat) || 0) + OTP_RESEND_MS - Date.now();
     if (wait > 0) return res.status(429).json({ error: `Please wait ${Math.ceil(wait / 1000)}s before requesting another code`, retryAfter: Math.ceil(wait / 1000) });
     res.json({ ok: true, ...(await issueOtp(company)) });
@@ -250,7 +320,7 @@ app.post('/api/onboarding/business', auth, async (req, res) => {
       return res.status(400).json({ error: 'Organization, industry and at least one use case are required' });
     }
     const company = await dbGet('SELECT * FROM companies WHERE id = ?', [req.companyId]);
-    if (!company || company.stage === 'verify') return res.status(403).json({ error: 'Verify your email first' });
+    if (!company || company.stage === 'verify') return res.status(403).json({ error: 'Verify your mobile first' });
     await dbRun('UPDATE companies SET name = ?, industry = ?, useCases = ?, stage = CASE WHEN stage = ? THEN ? ELSE stage END WHERE id = ?',
       [organization.trim(), industry, JSON.stringify(useCases), 'business', 'workspace', company.id]);
     res.json({ company: publicCompany(await dbGet('SELECT * FROM companies WHERE id = ?', [company.id])) });
@@ -288,12 +358,13 @@ app.post('/api/onboarding/workspace', auth, async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const company = await dbGet('SELECT * FROM companies WHERE email = ?', [String(email || '').trim().toLowerCase()]);
-    if (!company) return res.status(401).json({ error: 'Invalid email or password' });
+    const { identifier, phone, password } = req.body;
+    const ident = String(identifier || phone || '').trim().toLowerCase();
+    const company = await dbGet('SELECT * FROM companies WHERE phone = ? OR email = ?', [ident, ident]);
+    if (!company) return res.status(401).json({ error: 'Invalid credentials' });
 
     const valid = await bcrypt.compare(password, company.password);
-    if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
+    if (!valid) return res.status(401).json({ error: 'Invalid mobile or password' });
 
     const token = jwt.sign({ companyId: company.id }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, company: publicCompany(company) });
@@ -308,6 +379,16 @@ app.get('/api/me', auth, async (req, res) => {
     if (!company) return res.status(404).json({ error: 'Company not found' });
     res.json({ company: publicCompany(company) });
   } catch(err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/settings', auth, async (req, res) => {
+  try {
+    const settingsStr = JSON.stringify(req.body);
+    await dbRun('UPDATE companies SET settings = ? WHERE id = ?', [settingsStr, req.companyId]);
+    res.json({ success: true });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -425,6 +506,273 @@ app.delete('/api/agents/:id', auth, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+
+// --- Billing ---
+const LIMITS = { INR: { min: 1000, max: 1000000 }, USD: { min: 50, max: 10000 } };
+const gstRate = () => Number(process.env.GST_RATE || 0.18);
+const balanceField = (currency) => (currency === 'USD' ? 'balanceUsd' : 'balance');
+const safeEqual = (a, b) => {
+  const x = Buffer.from(a), y = Buffer.from(b);
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+};
+const hmac = (secret, data, enc = 'hex') => crypto.createHmac('sha256', secret).update(data).digest(enc);
+
+function parseAmount(amount, currency) {
+  const { min, max } = LIMITS[currency];
+  const amt = Number(amount);
+  if (!Number.isFinite(amt) || amt < min || amt > max) {
+    throw new Error(`Amount must be between ${min} and ${max} ${currency}`);
+  }
+  return Math.round(amt);
+}
+
+async function creditWallet(companyId, { paymentId, gateway, amount, currency, description }) {
+  const txnId = `${gateway}_${paymentId}`;
+  
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const existing = await client.query('SELECT id FROM wallet_transactions WHERE id = $1', [txnId]);
+    if (existing.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return;
+    }
+    const balField = balanceField(currency);
+    await client.query(`
+      INSERT INTO wallets (companyId, ${balField}, updatedAt) 
+      VALUES ($1, $2, $3) 
+      ON CONFLICT (companyId) DO UPDATE SET ${balField} = wallets.${balField} + $2, updatedAt = $3
+    `, [companyId, amount, Date.now()]);
+    
+    await client.query(`
+      INSERT INTO wallet_transactions (id, companyId, amount, currency, gateway, description, status, createdAt)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `, [txnId, companyId, amount, currency, gateway, description, 'paid', Date.now()]);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+app.get('/api/wallet', auth, async (req, res) => {
+  try {
+    let wallet = await dbGet('SELECT * FROM wallets WHERE companyId = ?', [req.companyId]);
+    if (!wallet) {
+      wallet = { balance: 0, balanceUsd: 0 };
+    }
+    const txns = await dbAll('SELECT * FROM wallet_transactions WHERE companyId = ? ORDER BY createdAt DESC LIMIT 25', [req.companyId]);
+    res.json({
+      balance: wallet.balance || 0,
+      balanceUsd: wallet.balanceUsd || 0,
+      transactions: txns
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const rzpAuth = () => 'Basic ' + Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64');
+
+app.post('/api/razorpay/order', auth, async (req, res) => {
+  try {
+    if (!process.env.RAZORPAY_KEY_ID) return res.status(503).json({ error: 'Razorpay is not configured' });
+    const amount = parseAmount(req.body.amount, 'INR');
+    const total = Math.round(amount * (1 + gstRate()) * 100);
+    
+    const rzpRes = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: { Authorization: rzpAuth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: total, currency: 'INR', notes: { baseAmount: String(amount) } }),
+    });
+    const order = await rzpRes.json();
+    if (!rzpRes.ok) return res.status(502).json({ error: order.error?.description || 'Razorpay order failed' });
+    
+    await dbRun("INSERT INTO orders (id, companyId, gateway, amount, createdAt) VALUES (?, ?, 'razorpay', ?, ?)", 
+      [order.id, req.companyId, amount, Date.now()]);
+    
+    res.json({ keyId: process.env.RAZORPAY_KEY_ID, orderId: order.id, amount: order.amount, currency: order.currency });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/razorpay/verify', auth, async (req, res) => {
+  try {
+    const { razorpay_order_id: orderId, razorpay_payment_id: paymentId, razorpay_signature: signature } = req.body;
+    if (!orderId || !paymentId || !signature) return res.status(400).json({ error: 'Missing payment fields' });
+    if (!safeEqual(hmac(process.env.RAZORPAY_KEY_SECRET, `${orderId}|${paymentId}`), signature)) {
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+    const order = await dbGet('SELECT * FROM orders WHERE id = ?', [orderId]);
+    if (!order) return res.status(404).json({ error: 'Unknown order' });
+    
+    await creditWallet(order.companyid || order.companyId, { paymentId, gateway: 'razorpay', amount: order.amount, currency: 'INR', description: 'Wallet top-up' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/razorpay/webhook', async (req, res) => {
+  try {
+    const signature = req.get('x-razorpay-signature') || '';
+    if (!process.env.RAZORPAY_WEBHOOK_SECRET || !safeEqual(hmac(process.env.RAZORPAY_WEBHOOK_SECRET, req.rawBody), signature)) {
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+    const payment = req.body?.payload?.payment?.entity;
+    if (req.body?.event === 'payment.captured' && payment) {
+      const order = await dbGet('SELECT * FROM orders WHERE id = ?', [payment.order_id]);
+      if (order) {
+        await creditWallet(order.companyid || order.companyId, { paymentId: payment.id, gateway: 'razorpay', amount: order.amount, currency: 'INR', description: 'Wallet top-up' });
+      }
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// --- Bolna / Calls ---
+const BOLNA_API_KEY = process.env.BOLNA_API_KEY;
+const BOLNA_FROM_NUMBER = process.env.BOLNA_FROM_NUMBER;
+const BOLNA_AGENT_ID = process.env.BOLNA_AGENT_ID;
+
+const AGENTS = {
+  hi: BOLNA_AGENT_ID,
+  en: '59d31f62-453d-4dfb-bdfc-efe7b4fd50fa', 
+  hinglish: BOLNA_AGENT_ID,
+  gu: process.env.BOLNA_AGENT_ID_GU || '7697ce86-aba1-4ce9-85de-b082599dde49',
+  mr: 'e2e08606-ef27-45f1-b8a9-93d58020fd0d',
+  ta: '1259a5fc-7706-40ba-933c-0f63beb99531',
+  te: 'cd9cfd4e-bf82-449c-85da-8b64127d43d9',
+  kn: '25bbefac-6539-4fc7-a949-6651ae91f5cb',
+  ml: 'b8d95b1b-b4e8-4f52-906c-2ec733a589ec',
+  bn: '407ab6f4-2399-48ec-b56e-46f4c8e2800f',
+  pa: '8735b059-49be-4c27-b0be-031a082d3c22',
+  od: '8abf1d2e-ed3b-4931-b209-9644bb8babb6',
+};
+
+async function requestBolna(path, options = {}) {
+  const res = await fetch(`https://api.bolna.ai${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${BOLNA_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = data.message || data.detail || data.error;
+    throw new Error(typeof detail === 'string' ? detail : `Request failed (${res.status})`);
+  }
+  return data;
+}
+
+app.post('/api/calls/start', auth, async (req, res) => {
+  try {
+    const { language, phone, userData, scheduledAt, myAgentId } = req.body;
+    
+    const bolnaAgentId = AGENTS[language] || AGENTS.en;
+    
+    const response = await requestBolna('/call', {
+      method: 'POST',
+      body: JSON.stringify({
+        agent_id: bolnaAgentId,
+        recipient_phone_number: phone,
+        user_data: userData,
+        ...(BOLNA_FROM_NUMBER && { from_phone_number: BOLNA_FROM_NUMBER }),
+        ...(scheduledAt && { scheduled_at: scheduledAt }),
+      }),
+    });
+    
+    const executionId = response.execution_id || ('sched_' + Date.now());
+    
+    await dbRun(
+      'INSERT INTO calls (id, companyId, agentId, phone, customerName, status, createdAt, scheduledAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [executionId, req.companyId, myAgentId || '', phone, userData?.customer_name || '', scheduledAt ? 'scheduled' : 'queued', Date.now(), scheduledAt ? new Date(scheduledAt).getTime() : null]
+    );
+    
+    res.json(response);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/calls', auth, async (req, res) => {
+  try {
+    const calls = await dbAll('SELECT * FROM calls WHERE companyId = ? ORDER BY createdAt DESC LIMIT 100', [req.companyId]);
+    
+    // Background refresh for active calls, but don't block the response
+    const activeCalls = calls.filter(c => !c.id.startsWith('sched_') && !['completed', 'failed', 'call-disconnected', 'no-answer', 'busy', 'canceled', 'error'].includes(c.status));
+    
+    // Return immediately with what we have in DB
+    const results = calls.map(c => {
+      let bolnaData = {};
+      if (c.bolnadata) {
+        try { bolnaData = JSON.parse(c.bolnadata); } catch(e) {}
+      }
+      return {
+        ...bolnaData, // Spread bolnaData so frontend gets transcript, duration, etc.
+        id: c.id, // Ensure our executionId takes precedence
+        companyId: c.companyid,
+        agentId: c.agentid,
+        customerName: c.customername,
+        created_at: bolnaData.created_at || new Date(Number(c.createdat)).toISOString(),
+        status: c.status,
+        scheduledAt: c.scheduledat,
+        recipient_phone_number: c.phone
+      };
+    });
+    
+    res.json(results);
+
+    // Refresh active calls in background
+    for (const call of activeCalls) {
+      try {
+        const bolnaData = await requestBolna(`/executions/${call.id}`);
+        if (bolnaData && bolnaData.status) {
+          await dbRun('UPDATE calls SET status = ?, bolnaData = ? WHERE id = ?', [bolnaData.status, JSON.stringify(bolnaData), call.id]);
+        }
+      } catch (e) {
+        console.error('Bolna background refresh error', e.message);
+      }
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/calls/:id', auth, async (req, res) => {
+  try {
+    const call = await dbGet('SELECT * FROM calls WHERE id = ? AND companyId = ?', [req.params.id, req.companyId]);
+    if (!call) return res.status(404).json({ error: 'Call not found' });
+    
+    if (!call.id.startsWith('sched_')) {
+      try {
+        const bolnaData = await requestBolna(`/executions/${call.id}`);
+        if (bolnaData && bolnaData.status && bolnaData.status !== call.status) {
+          await dbRun('UPDATE calls SET status = ? WHERE id = ?', [bolnaData.status, call.id]);
+          bolnaData.id = call.id;
+          return res.json(bolnaData);
+        }
+        return res.json(bolnaData);
+      } catch (e) {}
+    }
+    
+    let bolnaData = {};
+    if (call.bolnadata) {
+      try { bolnaData = JSON.parse(call.bolnadata); } catch(e) {}
+    }
+    
+    res.json({ id: call.id, status: call.status, created_at: bolnaData.created_at || new Date(Number(call.createdat)).toISOString(), ...bolnaData });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });

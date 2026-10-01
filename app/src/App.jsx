@@ -12,9 +12,9 @@ import AgentsPage from './pages/AgentsPage'
 import TeamPage from './pages/TeamPage'
 import Onboarding from './pages/Onboarding'
 import './onboarding.css'
-import { loadSettings, saveSettings } from './settings'
+import { mergeSettings } from './settings'
 import useCalls from './useCalls'
-import { getMe } from './api'
+import { getMe, saveSettings } from './api'
 import { getCompliance } from './compliance'
 
 const TABS = [
@@ -43,7 +43,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     return params.get('call')
   })
-  const [settings, setSettings] = useState(loadSettings)
+  const [settings, setSettings] = useState(() => mergeSettings(null))
   const { calls, loading, error, refresh } = useCalls(tab !== 'landing')
 
   const [company, setCompany] = useState({ name: 'Arham Aawaaz', stage: 'done' })
@@ -53,7 +53,13 @@ export default function App() {
   useEffect(() => {
     const token = localStorage.getItem('arhamavaz_token')
     if (token) {
-      getMe().then(res => { if (res?.company) setCompany(res.company); getCompliance().catch(() => {}) }).catch(() => {})
+      getMe().then(res => { 
+        setCompany(res.company); 
+        if (res.company.settings) setSettings(mergeSettings(res.company.settings));
+        getCompliance().catch(() => {}) 
+      }).catch(() => localStorage.removeItem('arhamavaz_token')).finally(() => setAuthLoading(false))
+    } else {
+      setAuthLoading(false)
     }
   }, [])
 

@@ -145,10 +145,11 @@ export default function SettingsPage({ company, onLogout }) {
       <PageHeader title="Settings" subtitle="Compliance and data controls for your workspace. Protections are on by default." />
 
       <section className="card acct">
-        <span className="acct-avatar" aria-hidden="true">{(company.name || company.email || '?').trim().charAt(0).toUpperCase()}</span>
+        <span className="acct-avatar" aria-hidden="true">{(company.name || company.phone || '?').trim().charAt(0).toUpperCase()}</span>
         <div className="acct-info">
           <h3>{company.name}</h3>
           <p>{company.email}</p>
+          <p>{company.phone}</p>
           {company.workspaceName && <small>Workspace: {company.workspaceName}</small>}
         </div>
         <button type="button" className="logout" onClick={onLogout}><LogoutIcon /> Log out</button>

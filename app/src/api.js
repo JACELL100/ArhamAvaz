@@ -17,17 +17,17 @@ export async function request(path, options = {}) {
   return data;
 }
 
-export function signup(name, email, password, mobile) {
+export function signup(name, email, phone, password) {
   return request('/signup', {
     method: 'POST',
-    body: JSON.stringify({ name, email, password, mobile }),
+    body: JSON.stringify({ name, email, phone, password }),
   });
 }
 
-export function login(email, password) {
+export function login(identifier, password) {
   return request('/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ identifier, password }),
   });
 }
 
@@ -50,8 +50,8 @@ export function deleteAgent(id) {
   return request(`/agents/${id}`, { method: 'DELETE' });
 }
 
-export function verifyEmail(code) {
-  return request('/verify-email', { method: 'POST', body: JSON.stringify({ code }) });
+export function verifyOtp(code) {
+  return request('/verify-otp', { method: 'POST', body: JSON.stringify({ code }) });
 }
 
 export function resendOtp() {
@@ -68,4 +68,11 @@ export function checkSlug(slug) {
 
 export function saveWorkspace(data) {
   return request('/onboarding/workspace', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export function saveSettings(settings) {
+  return request('/settings', {
+    method: 'POST',
+    body: JSON.stringify(settings),
+  })
 }

@@ -213,12 +213,12 @@
   .stat strong { font-size: 1.5rem; }
 
   .tabbar {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
     position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 20;
     max-width: 440px; margin: 0 auto;
     background: rgba(255, 255, 255, .86); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
-    border: 1px solid rgba(228, 233, 224, .9); border-radius: 24px; padding: 6px;
-    box-shadow: 0 14px 34px -12px rgba(20, 33, 15, .28), 0 2px 6px rgba(20, 33, 15, .05);
+    border: 1px solid rgba(226, 232, 240, .9); border-radius: 24px; padding: 6px;
+    box-shadow: 0 14px 34px -12px rgba(15, 23, 42, .28), 0 2px 6px rgba(15, 23, 42, .05);
   }
   .tabbar .nav-item {
     position: relative; flex-direction: column; gap: 3px; padding: 8px 4px;
@@ -235,24 +235,24 @@
   .tabbar .nav-item.active svg { stroke-width: 2.1; transform: translateY(-1px); }
   .tabbar .nav-item svg { transition: transform .25s var(--ease); }
   
-  .tabbar .nav-item:nth-child(2) {
+  .tabbar .nav-item:nth-child(3) {
     position: relative;
     top: -24px;
     height: 62px;
     width: 62px;
     margin: 0 auto;
     border-radius: 50%;
-    background: linear-gradient(135deg, #6cc236 0%, var(--brand) 45%, var(--brand-dark) 100%);
+    background: linear-gradient(135deg, #60a5fa 0%, var(--brand) 45%, var(--brand-dark) 100%);
     color: #fff;
-    box-shadow: 0 8px 18px -6px rgba(53, 117, 18, .6), inset 0 1px 0 rgba(255, 255, 255, .25), 0 0 0 6px #fff;
+    box-shadow: 0 8px 18px -6px rgba(37, 99, 235, .6), inset 0 1px 0 rgba(255, 255, 255, .25), 0 0 0 6px #fff;
     justify-content: center;
     padding: 0;
   }
-  .tabbar .nav-item:nth-child(2) span { display: none; }
-  .tabbar .nav-item:nth-child(2) svg { width: 26px; height: 26px; stroke-width: 2.2; color: #fff; transform: none !important; margin: 0; }
-  .tabbar .nav-item:nth-child(2)::before { display: none; }
-  .tabbar .nav-item:nth-child(2):active { transform: scale(.95); box-shadow: 0 4px 12px -4px rgba(53, 117, 18, .6), inset 0 2px 4px rgba(0, 0, 0, .2), 0 0 0 6px #fff; }
-  .tabbar .nav-item:nth-child(2).active { background: var(--brand-dark); }
+  .tabbar .nav-item:nth-child(3) span { display: none; }
+  .tabbar .nav-item:nth-child(3) svg { width: 26px; height: 26px; stroke-width: 2.2; color: #fff; transform: none !important; margin: 0; }
+  .tabbar .nav-item:nth-child(3)::before { display: none; }
+  .tabbar .nav-item:nth-child(3):active { transform: scale(.95); box-shadow: 0 4px 12px -4px rgba(37, 99, 235, .6), inset 0 2px 4px rgba(0, 0, 0, .2), 0 0 0 6px #fff; }
+  .tabbar .nav-item:nth-child(3).active { background: var(--brand-dark); }
 
   /* Smooth page transitions between tabs */
   .content { animation: tab-in .38s var(--ease) both; }

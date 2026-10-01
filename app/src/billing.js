@@ -1,6 +1,4 @@
-// Billing config + gateway client. Prices are placeholders from the pricing plan (ex-GST) — edit here to change them.
-// Server side lives in /functions. Set VITE_BILLING_API to the deployed functions base URL (see .env.example).
-const API = (import.meta.env.VITE_BILLING_API || '').replace(/\/$/, '')
+import { request } from './api';
 
 export const GST_RATE = 0.18
 
@@ -107,14 +105,10 @@ export function rateFor(amount, code) {
 }
 export const minutesFor = (amount, code) => Math.floor(amount / rateFor(amount, code))
 
-export const billingConfigured = () => Boolean(API)
+export const billingConfigured = () => true;
 
-async function api(path, options) {
-  if (!API) throw new Error('Payments are not configured yet. Set VITE_BILLING_API and deploy the billing functions.')
-  const res = await fetch(API + path, { headers: { 'Content-Type': 'application/json' }, ...options })
-  const body = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`)
-  return body
+async function api(path, options = {}) {
+  return request(path, options);
 }
 
 export const fetchWallet = () => api('/wallet')
