@@ -46,8 +46,8 @@ export default function App() {
   const [settings, setSettings] = useState(() => mergeSettings(null))
   const { calls, loading, error, refresh } = useCalls(tab !== 'landing')
 
-  const [company, setCompany] = useState({ name: 'Arham Aawaaz', stage: 'done' })
-  const [authLoading, setAuthLoading] = useState(false)
+  const [company, setCompany] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [devCode, setDevCode] = useState('')
 
   useEffect(() => {
@@ -107,7 +107,9 @@ export default function App() {
       </button>
     ))
 
-  // Auth check bypassed to allow testing features directly
+  if (authLoading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--muted)' }}>Loading...</div>
+  if (!company) return <Auth onAuth={(c, code) => { setDevCode(code || ''); setCompany(c) }} />
+  if (company.stage && company.stage !== 'done') return <Onboarding company={company} devCode={devCode} onUpdate={setCompany} />
 
   return (
     <div className="shell">
