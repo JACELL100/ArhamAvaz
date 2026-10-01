@@ -5,12 +5,21 @@ const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { SCOPES } = require('./lib/core');
+const createIntegration = require('./integration');
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const serviceAccount = require('./firebase-key.json');
 
 initializeApp({
   credential: cert(serviceAccount)
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 const app = express();
@@ -25,7 +34,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'arhamavaz-super-secret-key-2024';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false }
 });
 
 pool.on('error', (err) => console.error('Unexpected error on idle pg client', err));
@@ -171,7 +180,7 @@ async function initDb() {
     console.error('Error initializing PostgreSQL:', err);
   }
 }
-initDb();
+const dbReady = initDb();
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_RESEND_MS = 60 * 1000;
@@ -420,8 +429,8 @@ app.get('/api/keys', auth, async (req, res) => {
   try {
     // Postgres converts camelCase column names to lowercase in rows returned (e.g. createdAt -> createdat).
     // Let's alias them to exactly what frontend expects.
-    const keys = await dbAll('SELECT id, name, prefix, createdAt as "createdAt", lastUsedAt as "lastUsedAt" FROM api_keys WHERE companyId = ? ORDER BY createdAt DESC', [req.companyId]);
-    res.json({ keys });
+    const keys = await dbAll('SELECT id, name, prefix, scopes, createdAt as "createdAt", lastUsedAt as "lastUsedAt" FROM api_keys WHERE companyId = ? ORDER BY createdAt DESC', [req.companyId]);
+    res.json({ keys: keys.map((k) => ({ ...k, createdAt: Number(k.createdAt), lastUsedAt: k.lastUsedAt == null ? null : Number(k.lastUsedAt), scopes: k.scopes ? JSON.parse(k.scopes) : SCOPES })) });
   } catch(err) {
     res.status(500).json({ error: err.message });
   }
@@ -433,12 +442,20 @@ app.post('/api/keys', auth, async (req, res) => {
     const name = String(req.body.name || '').trim().slice(0, 60) || 'Untitled key';
     const count = await dbGet('SELECT COUNT(*) AS n FROM api_keys WHERE companyId = ?', [req.companyId]);
     if (Number(count.n) >= 20) return res.status(400).json({ error: 'Key limit reached. Revoke an old key first.' });
+    // Optional scopes limit what the key can do via /api/v1; omitted = full access.
+    let scopes = SCOPES;
+    if (req.body.scopes !== undefined) {
+      if (!Array.isArray(req.body.scopes) || !req.body.scopes.length || req.body.scopes.some((x) => !SCOPES.includes(x))) {
+        return res.status(400).json({ error: `scopes must be a non-empty subset of: ${SCOPES.join(', ')}` });
+      }
+      scopes = [...new Set(req.body.scopes)];
+    }
     const secret = `av_live_${crypto.randomBytes(24).toString('hex')}`;
     const id = generateId();
     const createdAt = Date.now();
-    await dbRun('INSERT INTO api_keys (id, companyId, name, prefix, hash, createdAt) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, req.companyId, name, secret.slice(0, 12), hashKey(secret), createdAt]);
-    res.json({ key: { id, name, prefix: secret.slice(0, 12), createdAt, lastUsedAt: null }, secret });
+    await dbRun('INSERT INTO api_keys (id, companyId, name, prefix, hash, scopes, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, req.companyId, name, secret.slice(0, 12), hashKey(secret), JSON.stringify(scopes), createdAt]);
+    res.json({ key: { id, name, prefix: secret.slice(0, 12), scopes, createdAt, lastUsedAt: null }, secret });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -656,7 +673,7 @@ const AGENTS = {
 };
 
 async function requestBolna(path, options = {}) {
-  const res = await fetch(`https://api.bolna.ai${path}`, {
+  const res = await fetch(`${process.env.BOLNA_BASE_URL || 'https://api.bolna.ai'}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${BOLNA_API_KEY}`,
@@ -773,6 +790,18 @@ app.get('/api/calls/:id', auth, async (req, res) => {
   }
 });
 
+// --- Arham Secure partner integration (/api/v1) ---
+const integration = createIntegration({
+  app, pool, dbGet, dbRun, dbAll, hashKey, requestBolna, sanitizeCompliance,
+  getBolnaAgentId: (language) => AGENTS[language] || AGENTS.en,
+  hasBolna: Boolean(BOLNA_API_KEY),
+  languages: Object.keys(AGENTS),
+  signingSecret: process.env.LINK_SIGNING_SECRET || JWT_SECRET,
+  isProd,
+});
+dbReady.then(() => integration.initDb());
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  integration.startWorkers();
 });
